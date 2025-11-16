@@ -19,7 +19,7 @@ for (const profile of basics.profiles) {
 
 <Section>
   <header>
-    <img id="me" src={basics.image} alt="Álvaro Martín Granados" draggable="false" width="180" height="180" loading="eager" />
+    <img id="me" src={basics.image} alt="Álvaro Martín Granados" draggable="false" width="180" height="180" loading="eager" fetchpriority="high" decoding="async" />
 
     <div>
       <h1 id="name">{basics.name}</h1>
@@ -63,7 +63,7 @@ for (const profile of basics.profiles) {
 
 <style>
   header {
-    margin: 100px auto;
+    margin: 60px auto 100px;
     display: flex;
     box-sizing: border-box;
     position: relative;
@@ -82,6 +82,7 @@ for (const profile of basics.profiles) {
     transition: transform 0.1s;
     filter: drop-shadow(0px 0px 5px #00000050);
     cursor: pointer;
+    content-visibility: auto;
   }
 
   .rotating {

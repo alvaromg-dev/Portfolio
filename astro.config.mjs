@@ -7,13 +7,20 @@ export default defineConfig({
         enabled: false
     },
     build: {
-        inlineStylesheets: 'auto',
+        inlineStylesheets: 'always',
+        assets: '_astro'
     },
     compressHTML: true,
     vite: {
         build: {
             cssMinify: true,
             minify: 'esbuild',
+            cssCodeSplit: false,
+            rollupOptions: {
+                output: {
+                    manualChunks: undefined,
+                }
+            }
         }
     }
 })

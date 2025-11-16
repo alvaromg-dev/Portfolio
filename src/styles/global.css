@@ -1,12 +1,22 @@
 @font-face {
   font-family: "Onest";
-  src: url("../assets/fonts/Onest-VariableFont_wght.woff2") format("woff2");
+  src: url("/Onest-VariableFont_wght.woff2") format("woff2");
   font-weight: 100 900;
   font-display: swap;
+  font-style: normal;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 * {
-  font-family: "Onest", system-ui;
+  font-family: "Onest", Times, serif;
   font-size: 15px;
   font-weight: 300;
   color: var(--light-theme-secondary-text);
@@ -25,16 +35,12 @@
 /* Animations */
 
 .animation-appear {
-  -webkit-animation-duration: 1s;
   animation-duration: 1s;
-  -webkit-animation-fill-mode: both;
   animation-fill-mode: both;
 }
 
 .fast {
-  -webkit-animation-duration: 0.4s;
   animation-duration: 0.4s;
-  -webkit-animation-fill-mode: both;
   animation-fill-mode: both;
 }
 
@@ -49,4 +55,5 @@
 
 .fadeIn {
   animation-name: fadeIn;
+  will-change: opacity;
 }
