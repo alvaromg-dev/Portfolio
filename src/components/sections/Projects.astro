@@ -1,0 +1,29 @@
+---
+import Section from "./Section.astro"
+import { projects } from "@cv";
+import ListItem from "./ListItem.astro";
+---
+
+<Section title="Proyectos">
+  <ul>
+    {
+      projects.map(({ url, description, highlights, name }) => {
+        return (
+          <li>
+            <ListItem title={name} highlights={highlights} description={description} url={url} />
+          </li>
+        );
+      })
+    }
+  </ul>
+</Section>
+
+<style>
+  ul {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+</style>

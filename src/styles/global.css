@@ -1,0 +1,52 @@
+@font-face {
+  font-family: "Onest";
+  src: url("../assets/fonts/Onest-VariableFont_wght.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+* {
+  font-family: "Onest", system-ui;
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--light-theme-secondary-text);
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+:root {
+  --blue: rgb(149, 217, 210);
+  --light-theme-primary-text: #323232; /*323232*/
+  --light-theme-secondary-text: #646464; /*646464*/
+  --light-theme-tertiary-text: #eeeeee; /*eeeeee*/
+}
+
+/* Animations */
+
+.animation-appear {
+  -webkit-animation-duration: 1s;
+  animation-duration: 1s;
+  -webkit-animation-fill-mode: both;
+  animation-fill-mode: both;
+}
+
+.fast {
+  -webkit-animation-duration: 0.4s;
+  animation-duration: 0.4s;
+  -webkit-animation-fill-mode: both;
+  animation-fill-mode: both;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fadeIn {
+  animation-name: fadeIn;
+}

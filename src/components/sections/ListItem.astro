@@ -1,0 +1,129 @@
+---
+interface Props {
+    title?: string;
+    title2?: string;
+    description?: string;
+    url?: string;
+    highlights?: string[] | null;
+    startDate?: Date | null;
+    endDate?: Date | null;
+}
+
+let {
+    title,
+    title2,
+    description,
+    url,
+    highlights,
+    startDate,
+    endDate,
+} = Astro.props;
+
+highlights = (highlights != null && highlights.length == 0 ? null : highlights);
+const startYear = startDate?.getFullYear();
+const endYear = endDate?.getFullYear();
+let years = "";
+if (startYear != null) {
+    years = years + startYear;
+
+    if (endYear != null) {
+        years = years + " - " + endYear;
+    } else {
+        years = years + " - Actual";
+    }
+}
+---
+
+<article>
+    {(title || title2 || description || years) && (
+    <header>
+        {title != null && (url ? <h3 class="with-link"><a href={url} target="_blank" title={title}>{title}</a></h3> : <h3 class="no-link">{title}</h3>)}
+        {title2 != null && <h4>{title2}</h4>}
+        {description != null && <p>{description}</p>}
+        {years != null && <time class="date">{years}</time>}
+    </header>)}
+    {(highlights) && (
+    <footer>
+        {highlights.map((highlight) => {return <span>{highlight}</span>;})}
+    </footer>)}
+</article>
+
+<style>
+    article {
+        border-radius: 8px;
+        border: 1px solid #f2f2f2;
+        gap: 10px;
+        display: flex;
+        flex-direction: column;
+        padding: 16px;
+        height: 100%;
+    }
+
+    article header {
+        position: relative;
+        flex: 1;
+    }
+
+    article h3 {
+        margin-bottom: 10px;
+        font-size: 18px;
+        color: var(--light-theme-primary-text);
+
+        a {
+            font-size: 18px;
+            text-decoration: underline;
+        }
+    }
+
+    article h4 {
+        color: var(--light-theme-primary-text);
+        font-weight: 400;
+        margin: 10px 0 5px 0;
+        font-size: 15px;
+    }
+
+    article a {
+        color: #111;
+        text-decoration: none;
+    }
+
+    article p {
+        font-size: 15px;
+        line-height: 1.2rem;
+    }
+
+    article h3 span {
+        color: rgb(0, 188, 47);
+        animation-name: flicker;
+        animation-duration: 3s;
+        animation-timing-function: ease-in;
+        animation-iteration-count: infinite;
+    }
+
+    footer {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        font-size: 0.6rem;
+    }
+
+    footer span {
+        border-radius: 6px;
+        background: var(--light-theme-tertiary-text);
+        color: var(--light-theme-secondary-text);
+        font-size: 12px;
+        font-weight: 500;
+        padding: 0.2rem 0.6rem;
+    }
+
+    .date {
+        color: var(--light-theme-primary-text);
+        overflow: hidden;
+        position: absolute;
+        top: 0;
+        right: 0;
+        color: var(--light-theme-primary-text);
+        font-size: 1rem;
+        cursor: default;
+    }
+</style>

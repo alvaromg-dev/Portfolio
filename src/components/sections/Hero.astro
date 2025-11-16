@@ -1,0 +1,171 @@
+---
+import { basics } from "@cv"
+import Section from "./Section.astro"
+import Mail from "@/assets/icons/Mail.astro";
+import Linkedin from "@/assets/icons/Linkedin.astro";
+import Github from "@/assets/icons/Github.astro";
+
+let linkedinUrl: string = "";
+let githubUrl: string = "";
+
+for (const profile of basics.profiles) {
+  if (profile.network === "LinkedIn") {
+    linkedinUrl = profile.url;
+  } else if (profile.network === "GitHub") {
+    githubUrl = profile.url;
+  }
+}
+---
+
+<Section>
+  <header>
+    <img id="me" src={basics.image} alt="Álvaro Martín Granados" draggable="false" width="180" height="180" loading="eager" />
+
+    <div>
+      <h1 id="name">{basics.name}</h1>
+      <p id="about">{basics.label}</p>
+
+      <nav>
+        <ul>
+          <li><p id="status">{basics.status}</p></li>
+          <li><a target="_blank" href={`mailto:${basics.email}`} aria-label="Enviar correo electrónico"><Mail color="white" size={20}/></a></li>
+          <li><a target="_blank" href={linkedinUrl} aria-label="Ver perfil de LinkedIn"><Linkedin color="white" size={20}/></a></li>
+          <li><a target="_blank" href={githubUrl} aria-label="Ver perfil de GitHub"><Github color="white" size={20}/></a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+</Section>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const img = document.getElementById("me");
+    if (!img) return;
+
+    let timeoutId: any;
+
+    img.addEventListener("click", () => {
+      // Restart animation if already rotating
+      img.classList.remove("rotating");
+      void img.offsetWidth; // ← force reflow (restart animation)
+      img.classList.add("rotating");
+
+      // Clear previous timer if exists
+      clearTimeout(timeoutId);
+
+      // Stop animation after 1 second
+      timeoutId = setTimeout(() => {
+        img.classList.remove("rotating");
+      }, 1000);
+    });
+  });
+</script>
+
+<style>
+  header {
+    margin: 100px auto;
+    display: flex;
+    box-sizing: border-box;
+    position: relative;
+  }
+
+  nav {
+    position: absolute;
+    bottom: 0;
+  }
+
+  #me {
+    border-radius: 5px;
+    margin: 0 20px 0 0;
+    width: 180px;
+    height: 180px;
+    transition: transform 0.1s;
+    filter: drop-shadow(0px 0px 5px #00000050);
+    cursor: pointer;
+  }
+
+  .rotating {
+    animation: spin 1s ease-in-out 1;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(720deg); }
+  }
+
+  #me:hover { transform: scale(0.99); }
+  #me:active { filter: drop-shadow(0px 0px 2px #00000050); }
+
+  #name {
+    color: var(--light-theme-primary-text);
+    font-weight: 700;
+    line-height: 1.5;
+    font-size: 2.5rem;
+  }
+
+  #about {
+    font-size: 18px;
+    color: var(--light-theme-primary-text);
+    font-weight: 300;
+    display: block;
+    margin: 10px 0;
+  }
+
+  ul {
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+
+    li {
+      list-style: none;
+    }
+  }
+
+  #status {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--light-theme-primary-text);
+    background-color: var(--blue);
+    border-radius: 5px;
+    filter: drop-shadow(0px 0px 5px #00000050);
+    transition: 0.1s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 10px;
+  }
+
+  a {
+    background-color: var(--light-theme-primary-text);
+    border-radius: 5px;
+    font-weight: 300;
+    filter: drop-shadow(0px 0px 5px #00000050);
+    transition: 0.1s;
+    font-size: 15px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 10px;
+  }
+
+  a:hover { transform: scale(0.97); }
+  a:active { filter: drop-shadow(0px 0px 2px #00000050); transform: scale(0.95); }
+
+  @media (width <= 850px) {
+    header {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      max-width: 90%;
+    }
+    #me { margin: 0 0 20px 0; }
+    nav {
+      margin: 20px 0 0 0;
+      position: relative;
+      display: flex;
+      justify-content: center;
+    }
+    h1 { text-align: center; }
+  }
+</style>

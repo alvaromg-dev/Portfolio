@@ -1,0 +1,12 @@
+---
+import Section from "./Section.astro"
+import { skills } from "@cv"
+import ListItem from "./ListItem.astro"
+
+const skillNames: string[] = [];
+skills.forEach(sk => skillNames.push(sk.name))
+---
+
+<Section title="Habilidades">
+  <ListItem highlights={skillNames} />
+</Section>

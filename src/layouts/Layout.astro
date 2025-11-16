@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Portfolio de Álvaro Martín Granados - Desarrollador Full Stack especializado en Java y Spring Framework"
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Álvaro Martín Granados - Portfolio</title>
+
+    <style>
+      :root {
+        --blue: rgb(149, 217, 210);
+        --light-theme-primary-text: #323232;
+        --light-theme-secondary-text: #646464;
+        --light-theme-tertiary-text: #eeeeee;
+      }
+
+      * {
+        box-sizing: border-box;
+        padding: 0;
+        margin: 0;
+      }
+
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+        font-size: 15px;
+        font-weight: 300;
+        color: var(--light-theme-secondary-text);
+        min-height: 100vh;
+        background: #fff;
+      }
+
+      main {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .fadeIn {
+          animation: fadeIn 0.5s ease-in;
+        }
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+    </style>
+
+    <link
+      rel="preload"
+      href="/src/assets/fonts/Onest-VariableFont_wght.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+  </head>
+  <body>
+    <noscript>
+      <style>
+        .animation-appear {
+          opacity: 1 !important;
+          visibility: visible !important;
+        }
+      </style>
+    </noscript>
+    <slot />
+  </body>
+</html>

@@ -1,0 +1,37 @@
+---
+import Section from "./Section.astro"
+import { work } from "@cv"
+import ListItem from "./ListItem.astro"
+---
+
+<Section title="Experiencia laboral">
+  <ul>
+    {
+      work.map(
+        ({ name, startDate, endDate, position, summary, highlights, url }) => {
+          return (
+            <li>
+              <ListItem title={name}
+                        title2={position}
+                        highlights={highlights}
+                        description={summary}
+                        url={url}
+                        startDate={(startDate != null ? new Date(startDate) : null)}
+                        endDate={(endDate != null ? new Date(endDate) : null)}/>
+            </li>
+          )
+        }
+      )
+    }
+  </ul>
+</Section>
+
+<style>
+  ul {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+</style>

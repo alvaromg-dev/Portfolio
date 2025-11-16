@@ -1,0 +1,59 @@
+---
+import Tools from "@/assets/icons/Tools.astro";
+---
+
+<div id="backend-nav">
+    <span id="title">🤫</span>
+    <nav>
+        <ul>
+            <li><a target="_blank" href="https://alvaromg.com/tools" aria-label="Ver herramientas"><Tools color="white" size={30}/></a></li>
+        </ul>
+    </nav>
+</div>
+
+<style>
+    #backend-nav {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        height: 200px;
+        width: 100px;
+        border-radius: 0 5px 0 0;
+        background-color: var(--light-theme-primary-text);
+        box-shadow: 0px 0px 10px 0px var(--light-theme-primary-text);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: 0.5s;
+    }
+
+    #backend-nav:hover {
+        opacity: 1;
+        transition: 8s;
+    }
+
+    nav, ul, li {
+        list-style: none;
+    }
+
+    a {
+        font-weight: 300;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 5px 10px;
+    }
+
+    #title {
+        position: absolute;
+        top: 5px;
+        right: 8px;
+    }
+
+    @media (width <= 940px) {
+        #backend-nav {
+            display: none;
+        }
+    }
+</style>

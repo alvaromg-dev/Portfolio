@@ -1,0 +1,182 @@
+{
+  "basics": {
+    "name": "Álvaro Martín Granados",
+    "label": "Me encanta modularizar, optimizar procesos y servicios usando la potencia que me ofrece Java y Spring Framework junto a una arquitectura de microservicios",
+    "image": "/Alvaro_Martin_Granados.webp",
+    "email": "alvaromg.004@gmail.com",
+    "phone": "",
+    "url": "https://midu.dev",
+    "summary": "Trabajo en NTT DATA mientras estudio Ingeniería Informatica. Resido en Málaga, España, y he tenido la oportunidad de colaborar en distintos proyectos, tanto monolíticos como arquitecturas distribuidas con microservicios.",
+    "status": "Trabajando",
+    "location": {
+      "address": "",
+      "postalCode": "",
+      "city": "",
+      "countryCode": "",
+      "region": "España"
+    },
+    "profiles": [
+      {
+        "network": "LinkedIn",
+        "username": "alvaromg",
+        "url": "https://www.linkedin.com/in/álvaro-martín-granados-9b6b48256"
+      },
+      {
+        "network": "GitHub",
+        "username": "alvaromg",
+        "url": "https://github.com/alvaromg-dev"
+      }
+    ]
+  },
+  "work": [
+    {
+      "name": "NTTDATA",
+      "position": "Software developer",
+      "url": "https://es.nttdata.com/",
+      "startDate": "2025-03-01",
+      "endDate": null,
+      "summary": "Desarrollo e implementación de nuevas funcionalidades en aplicaciones gubernamentales, tanto monolíticas como basadas en microservicios. Participación en el diseño, integración y mantenimiento de servicios REST con tecnologías Java y Spring Boot, asegurando la estabilidad y eficiencia de los sistemas.",
+      "highlights": []
+    },
+    {
+      "name": "Bartolomé Consultores",
+      "position": "Técnico informático",
+      "url": "https://www.bartolomeconsultores.com/",
+      "startDate": "2023-03-01",
+      "endDate": "2023-06-01",
+      "summary": "Instalación, configuración y mantenimiento de sistemas informáticos, terminales de punto de venta (TPV), dispositivos PDA y redes locales. Soporte técnico a usuarios y resolución de incidencias de hardware y software.",
+      "highlights": []
+    }
+  ],
+  "volunteer": [{
+    "organization": "Organization",
+    "position": "Volunteer",
+    "url": "https://organization.com/",
+    "startDate": "2012-01-01",
+    "endDate": "2013-01-01",
+    "summary": "Description…",
+    "highlights": [
+      "Awarded 'Volunteer of the Month'"
+    ]
+  }],
+  "education": [{
+    "institution": "Universidad Isabel I",
+    "url": "https://www.ui1.es/",
+    "area": "Ingeniero informático",
+    "studyType": "",
+    "startDate": "2025-09-01",
+    "endDate": null,
+    "score": "1",
+    "courses": ["Matemáticas"]
+  },
+  {
+    "institution": "IES Vega de Mijas",
+    "url": "https://blogsaverroes.juntadeandalucia.es/iesvegademijas/",
+    "area": "Desarrollador de aplicaciones multiplataforma",
+    "studyType": "",
+    "startDate": "2023-09-1",
+    "endDate": "2025-05-1",
+    "score": "2",
+    "courses": ["Java", "SQL"]
+  },
+  {
+    "institution": "IES Fuengirola Nº1",
+    "url": "https://www.iesfuengirola1.es/",
+    "area": "Técnico en Sistemas Microinformáticos y Redes",
+    "studyType": "",
+    "startDate": "2021-09-1",
+    "endDate": "2023-05-1",
+    "score": "3",
+    "courses": ["Sistemas operativos", "Redes"]
+  }],
+  "awards": [{
+    "title": "Award",
+    "date": "2014-11-01",
+    "awarder": "Company",
+    "summary": "There is no spoon."
+  }],
+  "certificates": [{
+    "name": "Certificate",
+    "date": "2021-11-07",
+    "issuer": "Company",
+    "url": "https://certificate.com"
+  }],
+  "publications": [{
+    "name": "Publication",
+    "publisher": "Company",
+    "releaseDate": "2014-10-01",
+    "url": "https://publication.com",
+    "summary": "Description…"
+  }],
+  "skills": [
+    {
+      "name": "SQL",
+      "level": "",
+      "keywords": []
+    },
+    {
+      "name": "Git",
+      "level": "",
+      "keywords": []
+    },
+    {
+      "name": "Angular",
+      "level": "",
+      "keywords": []
+    },
+    {
+      "name": "Java",
+      "level": "",
+      "keywords": []
+    },
+    {
+      "name": "Spring Framework",
+      "level": "",
+      "keywords": []
+    }
+  ],
+  "languages": [
+    {
+      "language": "Language 1",
+      "fluency": "Native speaker"
+    },
+    {
+      "language": "Language 2",
+      "fluency": "Native speaker"
+    }
+  ],
+  "interests": [{
+    "name": "Wildlife",
+    "keywords": [
+      "Ferrets",
+      "Unicorns"
+    ]
+  }],
+  "references": [{
+    "name": "Jane Doe",
+    "reference": "Reference…"
+  }],
+  "projects": [
+    {
+      "name": "Spring Template",
+      "isActive": true,
+      "description": "Plantilla base para el desarrollo de aplicaciones escalables en arquitectura de microservicios con Spring Boot. Incluye autenticación JWT, conexión a bases de datos SQL y configuración lista para entornos Docker.",
+      "highlights": ["Spring Boot", "Java", "JWT", "SQL", "Docker", "Jenkins"],
+      "url": "#"
+    },
+    {
+      "name": "EasyNotes",
+      "isActive": false,
+      "description": "Aplicación multiplataforma para la gestión de notas, desarrollada con JavaFX y una API REST en Java Spring Boot. Permite autenticación con JWT y persistencia de datos en bases de datos SQL.",
+      "highlights": ["SQL", "JWT", "JavaFX", "Spring Boot", "Docker"],
+      "url": "https://github.com/alvaromg-dev/EasyNotes?tab=readme-ov-file"
+    },
+    {
+      "name": "SVG-to-FXML-Converter",
+      "isActive": false,
+      "description": "Herramienta que convierte archivos SVG a formato FXML para facilitar la creación de iconos personalizados en interfaces JavaFX.",
+      "highlights": ["JavaFX"],
+      "url": "https://github.com/alvaromg-dev/SVG-to-FXML-Converter"
+    }
+  ]
+}

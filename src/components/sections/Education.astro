@@ -1,0 +1,34 @@
+---
+import Section from "./Section.astro"
+import { education } from "@cv"
+import ListItem from "./ListItem.astro"
+---
+
+<Section title="Educación">
+  <ul>
+    {
+      education.map(({ institution, startDate, endDate, area, url, courses }) => {
+        return (
+          <li>
+            <ListItem title={institution}
+                      title2={area}
+                      url={url}
+                      highlights={courses}
+                      startDate={(startDate != null ? new Date(startDate) : null)}
+                      endDate={(endDate != null ? new Date(endDate) : null)}/>
+          </li>
+        )
+      })
+    }
+  </ul>
+</Section>
+
+<style>
+  ul {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+</style>

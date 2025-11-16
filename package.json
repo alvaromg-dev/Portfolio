@@ -1,0 +1,13 @@
+{
+  "name": "portfolio",
+  "type": "module",
+  "version": "1.0.0",
+  "scripts": {
+    "run:web": "astro dev --host 0.0.0.0",
+    "build:web": "astro build",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "astro": "^5.4.2"
+  }
+}
