@@ -3,12 +3,11 @@
   "type": "module",
   "version": "1.1.0",
   "scripts": {
-    "run:web": "astro dev --host 0.0.0.0",
-    "build:web": "astro build",
-    "preview:web": "astro preview --host 0.0.0.0",
-    "astro": "astro"
+    "dev": "astro dev",
+    "build": "astro build",
+    "start": "astro preview --host 0.0.0.0 --port 4173"
   },
   "dependencies": {
-    "astro": "^5.4.2"
+    "astro": "5.4.2"
   }
 }
