@@ -10,3 +10,5 @@ services:
       - "4173:4173"
     environment:
       NODE_ENV: production
+    networks:
+      - reverse-proxy
