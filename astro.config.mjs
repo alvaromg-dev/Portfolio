@@ -22,6 +22,8 @@ export default defineConfig({
                 }
             }
         }
-    }
+    },
+    server: {
+        allowedHosts: ['alvaromg.com', 'www.alvaromg.com'],
+    },
 })
-
