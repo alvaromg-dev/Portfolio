@@ -12,3 +12,7 @@ services:
       NODE_ENV: production
     networks:
       - reverse-proxy
+
+networks:
+  reverse-proxy:
+    external: true
