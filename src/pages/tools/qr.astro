@@ -54,7 +54,9 @@ import "@/styles/global.css";
     </section>
   </main>
 
-  <script>
+  <script type="module">
+    import * as QRCode from "qrcode";
+
     const form = document.getElementById("qr-form");
     const contentInput = document.getElementById("content");
     const sizeInput = document.getElementById("size");
@@ -62,61 +64,65 @@ import "@/styles/global.css";
     const qrImage = document.getElementById("qr-image");
     const downloadBtn = document.getElementById("download");
 
-    const buildQrUrl = ({ content, size, margin }) => {
-      const params = new URLSearchParams({
-        size: `${size}x${size}`,
-        margin,
-        data: content,
+    const generateQr = async ({ content, size, margin }) => {
+      return QRCode.toDataURL(content, {
+        width: Number(size),
+        margin: Number(margin),
+        errorCorrectionLevel: "M",
+        color: { dark: "#000000", light: "#ffffff" },
       });
-
-      return `https://api.qrserver.com/v1/create-qr-code/?${params.toString()}`;
     };
 
-    const updateQr = () => {
+    const updateQr = async () => {
       const content = contentInput?.value?.trim() || "https://alvaromg.com";
       const size = sizeInput?.value || "300";
       const margin = marginInput?.value || "2";
 
-      const src = buildQrUrl({ content, size, margin });
-      if (qrImage) {
-        qrImage.src = src;
-        qrImage.width = Number(size);
-        qrImage.height = Number(size);
+      try {
+        const src = await generateQr({ content, size, margin });
+        if (qrImage) {
+          qrImage.src = src;
+          qrImage.width = Number(size);
+          qrImage.height = Number(size);
+          qrImage.alt = "Vista previa del código QR";
+        }
+      } catch (error) {
+        console.error("No se pudo generar el QR.", error);
+        if (qrImage) {
+          qrImage.removeAttribute("src");
+          qrImage.alt = "No se pudo generar el QR.";
+        }
       }
     };
 
-    const downloadQr = async () => {
+    const downloadQr = () => {
       if (!qrImage?.src) return;
 
-      try {
-        const response = await fetch(qrImage.src);
-        if (!response.ok) throw new Error("No se pudo descargar");
-
-        const blob = await response.blob();
-        const objectUrl = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = objectUrl;
-        link.download = "qr-code.png";
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(objectUrl);
-      } catch {
-        window.open(qrImage.src, "_blank", "noopener,noreferrer");
-      }
+      const link = document.createElement("a");
+      link.href = qrImage.src;
+      link.download = "qr-code.png";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
     };
 
     form?.addEventListener("submit", (event) => {
       event.preventDefault();
-      updateQr();
+      void updateQr();
     });
 
-    contentInput?.addEventListener("input", updateQr);
-    sizeInput?.addEventListener("change", updateQr);
-    marginInput?.addEventListener("change", updateQr);
+    contentInput?.addEventListener("input", () => {
+      void updateQr();
+    });
+    sizeInput?.addEventListener("change", () => {
+      void updateQr();
+    });
+    marginInput?.addEventListener("change", () => {
+      void updateQr();
+    });
     downloadBtn?.addEventListener("click", downloadQr);
 
-    updateQr();
+    void updateQr();
   </script>
 </Layout>
 
