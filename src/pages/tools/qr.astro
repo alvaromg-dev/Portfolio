@@ -1,0 +1,258 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import "@/styles/global.css";
+---
+
+<Layout>
+  <main>
+    <section class="tool-section section-border animation-appear fadeIn">
+      <a class="back" href="/">← Volver</a>
+      <h1>Generador QR</h1>
+      <p class="subtitle">Crea un código QR a partir de texto o URL.</p>
+
+      <form id="qr-form" autocomplete="off">
+        <label for="content">Contenido</label>
+        <textarea
+          id="content"
+          name="content"
+          rows="4"
+          placeholder="https://alvaromg.com"
+        ></textarea>
+
+        <div class="row">
+          <div>
+            <label for="size">Tamaño</label>
+            <select id="size" name="size">
+              <option value="200">200x200</option>
+              <option value="300" selected>300x300</option>
+              <option value="400">400x400</option>
+              <option value="500">500x500</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="margin">Margen</label>
+            <select id="margin" name="margin">
+              <option value="0">0</option>
+              <option value="1">1</option>
+              <option value="2" selected>2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="submit">Generar</button>
+          <button id="download" type="button">Descargar PNG</button>
+        </div>
+      </form>
+
+      <figure class="preview" aria-live="polite">
+        <img id="qr-image" alt="Vista previa del código QR" width="300" height="300" loading="eager" decoding="async" />
+      </figure>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById("qr-form");
+    const contentInput = document.getElementById("content");
+    const sizeInput = document.getElementById("size");
+    const marginInput = document.getElementById("margin");
+    const qrImage = document.getElementById("qr-image");
+    const downloadBtn = document.getElementById("download");
+
+    const buildQrUrl = ({ content, size, margin }) => {
+      const params = new URLSearchParams({
+        size: `${size}x${size}`,
+        margin,
+        data: content,
+      });
+
+      return `https://api.qrserver.com/v1/create-qr-code/?${params.toString()}`;
+    };
+
+    const updateQr = () => {
+      const content = contentInput?.value?.trim() || "https://alvaromg.com";
+      const size = sizeInput?.value || "300";
+      const margin = marginInput?.value || "2";
+
+      const src = buildQrUrl({ content, size, margin });
+      if (qrImage) {
+        qrImage.src = src;
+        qrImage.width = Number(size);
+        qrImage.height = Number(size);
+      }
+    };
+
+    const downloadQr = async () => {
+      if (!qrImage?.src) return;
+
+      try {
+        const response = await fetch(qrImage.src);
+        if (!response.ok) throw new Error("No se pudo descargar");
+
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = "qr-code.png";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(objectUrl);
+      } catch {
+        window.open(qrImage.src, "_blank", "noopener,noreferrer");
+      }
+    };
+
+    form?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      updateQr();
+    });
+
+    contentInput?.addEventListener("input", updateQr);
+    sizeInput?.addEventListener("change", updateQr);
+    marginInput?.addEventListener("change", updateQr);
+    downloadBtn?.addEventListener("click", downloadQr);
+
+    updateQr();
+  </script>
+</Layout>
+
+<style>
+  main {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 40px 0;
+  }
+
+  .tool-section {
+    width: min(700px, 90%);
+    border-radius: 5px;
+    margin: 0 auto;
+  }
+
+  .back {
+    color: var(--light-theme-primary-text);
+    text-decoration: none;
+    font-weight: 500;
+    display: inline-flex;
+    margin-bottom: 12px;
+    transition: transform 0.1s;
+  }
+
+  .back:hover {
+    transform: translateX(-2px);
+  }
+
+  h1 {
+    color: var(--light-theme-primary-text);
+    font-weight: 700;
+    line-height: 1.2;
+    font-size: 2rem;
+  }
+
+  .subtitle {
+    margin: 10px 0 24px;
+    color: var(--light-theme-secondary-text);
+    font-size: 16px;
+  }
+
+  form {
+    display: grid;
+    gap: 12px;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--light-theme-primary-text);
+    font-weight: 500;
+  }
+
+  textarea,
+  select {
+    width: 100%;
+    border: 1px solid #dadada;
+    border-radius: 5px;
+    padding: 10px 12px;
+    color: var(--light-theme-primary-text);
+    background: #fff;
+    outline: none;
+  }
+
+  textarea:focus,
+  select:focus {
+    border-color: var(--blue);
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  button {
+    border: 0;
+    border-radius: 5px;
+    font-weight: 500;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: transform 0.1s;
+    color: var(--light-theme-primary-text);
+    background: var(--blue);
+  }
+
+  button:hover {
+    transform: scale(0.98);
+  }
+
+  .preview {
+    margin-top: 22px;
+    border: 1px solid #efefef;
+    border-radius: 5px;
+    padding: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 340px;
+  }
+
+  #qr-image {
+    border-radius: 5px;
+    width: min(100%, 300px);
+    height: auto;
+    background: #fff;
+  }
+
+  .section-border {
+    outline: 2px dashed transparent;
+    outline-offset: 5px;
+    transition: 0.5s;
+  }
+
+  .section-border:hover {
+    outline-color: var(--blue);
+  }
+
+  @media (width <= 640px) {
+    .row {
+      grid-template-columns: 1fr;
+    }
+
+    .actions {
+      flex-direction: column;
+    }
+
+    .preview {
+      min-height: 250px;
+    }
+  }
+</style>
