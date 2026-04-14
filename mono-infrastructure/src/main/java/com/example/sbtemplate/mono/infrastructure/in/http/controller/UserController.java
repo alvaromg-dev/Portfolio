@@ -76,6 +76,7 @@ public class UserController {
      * @return
      */
     @PostMapping(EndpointsConstants.USERS_CREATE)
+    @PreAuthorize("hasAuthority('" + RolesConstants.ADMIN + "')")
     public UserResponse create(
         @RequestBody CreateUserRequest request
     ) {

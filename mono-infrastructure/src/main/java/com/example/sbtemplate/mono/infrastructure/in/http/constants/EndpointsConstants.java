@@ -32,18 +32,20 @@ public class EndpointsConstants {
     public static final String TELEMETRY_TRACK = BASE + "/telemetry/track";
     public static final String TELEMETRY_DELETE = BASE + "/telemetry/delete";
     public static final String TELEMETRY_PAGE = "/telemetry";
+    public static final String LOGIN_PAGE = "/login";
+    public static final String USERS_PAGE = "/users";
+    public static final String USERS_CREATE_PAGE = USERS_PAGE + "/create";
+    public static final String USERS_UPDATE_PAGE = USERS_PAGE + "/update";
+    public static final String USERS_DELETE_PAGE = USERS_PAGE + "/delete";
 
     private static final String[] PUBLIC_PATHS = {
         SWAGGER + "/**",
-        USERS_CREATE,
         AUTH_EMAIL,
         AUTH_REFRESH,
         AUTH_VALIDATE,
-        PORTFOLIO_SAVE,
         TELEMETRY_TRACK,
-        TELEMETRY_DELETE,
         "/",
-        TELEMETRY_PAGE,
+        LOGIN_PAGE,
         "/portfolio.css",
         "/portfolio.js",
         "/telemetry.js",

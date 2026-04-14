@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" th:lang="${loginLang}">
+<head th:replace="~{components/layout/head :: pageHead(pageTitle=${pageTitle})}"></head>
+<body>
+<main class="login-main">
+  <section class="login-card">
+    <h1 class="cv-section-h2" th:text="${loginTitle}">Acceso seguro</h1>
+    <p class="login-subtitle" th:text="${loginSubtitle}">Inicia sesion para editar portfolio y ver telemetria</p>
+
+    <p th:if="${showLoginError}" class="login-message login-error" th:text="${loginErrorLabel}">Credenciales invalidas</p>
+    <p th:if="${showLogoutMessage}" class="login-message login-ok" th:text="${loginLogoutLabel}">Sesion cerrada</p>
+
+    <form method="post" th:action="@{/login}" class="login-form">
+      <label class="editor-field">
+        <span th:text="${loginUsernameLabel}">Usuario</span>
+        <input type="text" name="username" autocomplete="username" required />
+      </label>
+
+      <label class="editor-field">
+        <span th:text="${loginPasswordLabel}">Contrasena</span>
+        <input type="password" name="password" autocomplete="current-password" required />
+      </label>
+
+      <button class="login-submit" type="submit" th:text="${loginSubmitLabel}">Entrar</button>
+    </form>
+
+    <a class="login-back-link" th:href="@{/(lang=${loginLang})}" th:text="${loginBackLabel}">Volver al portfolio</a>
+  </section>
+</main>
+</body>
+</html>
+

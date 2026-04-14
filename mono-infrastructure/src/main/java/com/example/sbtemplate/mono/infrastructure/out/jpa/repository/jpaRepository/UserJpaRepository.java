@@ -2,6 +2,7 @@ package com.example.sbtemplate.mono.infrastructure.out.jpa.repository.jpaReposit
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -23,6 +24,13 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
     @EntityGraph(attributePaths = "roles")
     @Query("select u from UserEntity u where u.email = :email")
     Optional<UserEntity> findByEmailWithRoles(String email);
+    @EntityGraph(attributePaths = "roles")
+    @Query("select u from UserEntity u where lower(u.email) = lower(:email)")
+    Optional<UserEntity> findByEmailWithRolesIgnoreCase(String email);
+    @EntityGraph(attributePaths = "roles")
+    List<UserEntity> findAllByDeletedAtIsNullOrderByCreatedAtDesc();
+    @EntityGraph(attributePaths = "roles")
+    Optional<UserEntity> findByIdAndDeletedAtIsNull(UUID id);
 
     // Update
 

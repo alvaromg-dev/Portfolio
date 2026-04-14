@@ -1,8 +1,10 @@
 package com.example.sbtemplate.mono.infrastructure.in.http.security;
 
+import com.example.sbtemplate.mono.application.roles.constants.RolesConstants;
 import com.example.sbtemplate.mono.infrastructure.in.http.constants.EndpointsConstants;
 import com.example.sbtemplate.mono.infrastructure.out.jpa.entities.UserEntity;
 import com.example.sbtemplate.mono.infrastructure.out.jpa.repository.jpaRepository.UserJpaRepository;
+import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -40,23 +42,45 @@ public class AuthorizationSecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http, TokenAuthenticationFilter tokenAuthenticationFilter) throws Exception {
         http.cors(Customizer.withDefaults());
         http.csrf(AbstractHttpConfigurer::disable);
-        http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+        http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));
         http.authorizeHttpRequests(auth -> auth
             .requestMatchers(EndpointsConstants.getPublicPaths()).permitAll()
+            .requestMatchers(
+                EndpointsConstants.PORTFOLIO_SAVE,
+                EndpointsConstants.TELEMETRY_PAGE,
+                EndpointsConstants.TELEMETRY_DELETE
+            ).hasAuthority(RolesConstants.CV_EDITOR)
+            .requestMatchers(
+                EndpointsConstants.USERS_PAGE,
+                EndpointsConstants.USERS_CREATE_PAGE,
+                EndpointsConstants.USERS_UPDATE_PAGE,
+                EndpointsConstants.USERS_DELETE_PAGE
+            ).hasAuthority(RolesConstants.ADMIN)
             .anyRequest().authenticated()
         );
-        http.formLogin(AbstractHttpConfigurer::disable);
+        http.formLogin(form -> form
+            .loginPage(EndpointsConstants.LOGIN_PAGE)
+            .loginProcessingUrl(EndpointsConstants.LOGIN_PAGE)
+            .defaultSuccessUrl("/", false)
+            .failureUrl(EndpointsConstants.LOGIN_PAGE + "?error=true")
+            .permitAll()
+        );
         http.httpBasic(AbstractHttpConfigurer::disable);
-        http.logout(AbstractHttpConfigurer::disable);
+        http.logout(logout -> logout
+            .logoutUrl("/logout")
+            .logoutSuccessUrl("/?logout=true")
+            .permitAll()
+        );
         http.addFilterBefore(tokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
     @Bean
-    public UserDetailsService userDetailsService(UserJpaRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserDetailsService userDetailsService(UserJpaRepository userRepository) {
         return username -> {
-            UserEntity user = userRepository.findByEmailWithRoles(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+            String normalizedUsername = username == null ? "" : username.trim().toLowerCase(Locale.ROOT);
+            UserEntity user = userRepository.findByEmailWithRolesIgnoreCase(normalizedUsername)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + normalizedUsername));
             Set<SimpleGrantedAuthority> authorities = user.getRoles().stream()
                 .map(role -> new SimpleGrantedAuthority(role.getCode()))
                 .collect(Collectors.toSet());

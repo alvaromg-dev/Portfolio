@@ -5,7 +5,13 @@
 <main class="telemetry-main">
   <div class="telemetry-header">
     <h1 class="cv-section-h2" th:text="${telemetryTitle}">Telemetria de visitas</h1>
-    <a class="telemetry-back-link" th:href="@{/(lang=${telemetryLang})}" th:text="${telemetryBackLabel}">Volver al portfolio</a>
+    <div class="telemetry-header-actions">
+      <a th:if="${canManageUsers}" class="telemetry-back-link" th:href="@{/users(lang=${telemetryLang})}" th:text="${usersButtonLabel}">Usuarios</a>
+      <a class="telemetry-back-link" th:href="@{/(lang=${telemetryLang})}" th:text="${telemetryBackLabel}">Volver al portfolio</a>
+      <form method="post" th:action="@{/logout}" class="telemetry-logout-form">
+        <button class="telemetry-logout-button" type="submit" th:text="${logoutButtonLabel}">Salir</button>
+      </form>
+    </div>
   </div>
 
   <div class="telemetry-stats">

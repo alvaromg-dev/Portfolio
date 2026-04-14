@@ -9,15 +9,22 @@ public class RolesConstants {
     // ==========================
 
     // only the codes, not the IDs
-    public static final String USER = "USER";
-    public static final String ADMINISTRATOR = "ADMINISTRATOR";
-    public static final String DEVELOPER = "DEVELOPER";
+    public static final String CV_EDITOR = "CV_EDITOR";
+    public static final String ADMIN = "ADMIN";
+
+    // Backward-compatible aliases for legacy references.
+    @Deprecated
+    public static final String USER = CV_EDITOR;
+    @Deprecated
+    public static final String ADMINISTRATOR = ADMIN;
+    @Deprecated
+    public static final String DEVELOPER = ADMIN;
 
     // Role groups
-    public static final Set<String> ALL = Set.of(USER, ADMINISTRATOR, DEVELOPER);
-    public static final Set<String> ADMINISTRATIVE = Set.of(ADMINISTRATOR, DEVELOPER);
-    public static final Set<String> SUPER_ADMINISTRATIVE = Set.of(DEVELOPER);
-    public static final Set<String> REQUIRED = Set.of(USER);
+    public static final Set<String> ALL = Set.of(CV_EDITOR, ADMIN);
+    public static final Set<String> ADMINISTRATIVE = Set.of(ADMIN);
+    public static final Set<String> SUPER_ADMINISTRATIVE = Set.of(ADMIN);
+    public static final Set<String> REQUIRED = Set.of(CV_EDITOR);
 
     // ==========================
     // Constructors
