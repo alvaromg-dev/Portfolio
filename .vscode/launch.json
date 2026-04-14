@@ -8,14 +8,14 @@
             "type": "java",
             "name": "MonoApplication",
             "request": "launch",
-            "mainClass": "com.example.sbtemplate.mono.infrastructure.MonoApplication",
+            "mainClass": "com.alvaromg.portfolio.infrastructure.MonoApplication",
             "projectName": "sbt-service-mono-infrastructure"
         },
         {
             "type": "java",
             "name": "MonoApplication (perfil default + debug)",
             "request": "launch",
-            "mainClass": "com.example.sbtemplate.mono.infrastructure.MonoApplication",
+            "mainClass": "com.alvaromg.portfolio.infrastructure.MonoApplication",
             "projectName": "sbt-service-mono-infrastructure",
             "cwd": "${workspaceFolder}/mono-infrastructure",
             "vmArgs": "-Dspring.profiles.active=default",

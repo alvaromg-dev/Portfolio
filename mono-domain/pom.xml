@@ -7,13 +7,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.example.sbtemplate</groupId>
-        <artifactId>sbt-service-mono</artifactId>
+        <groupId>com.alvaromg.portfolio</groupId>
+        <artifactId>portfolio</artifactId>
         <version>1.0.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>sbt-service-mono-domain</artifactId>
+    <artifactId>portfolio-domain</artifactId>
     <packaging>jar</packaging>
 
     <properties>

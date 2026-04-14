@@ -7,13 +7,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.example.sbtemplate</groupId>
-        <artifactId>sbt-service-mono</artifactId>
+        <groupId>com.alvaromg.portfolio</groupId>
+        <artifactId>portfolio</artifactId>
         <version>1.0.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>sbt-service-mono-infrastructure</artifactId>
+    <artifactId>portfolio-infrastructure</artifactId>
     <packaging>jar</packaging>
 
     <properties>
@@ -136,7 +136,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>com.example.sbtemplate.mono.infrastructure.MonoApplication</mainClass>
+                    <mainClass>com.alvaromg.portfolio.infrastructure.MonoApplication</mainClass>
                 </configuration>
             </plugin>
         </plugins>

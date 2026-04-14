@@ -1,6 +1,6 @@
 spring:
   application:
-    name: sbt-service-mono
+    name: portfolio
   thymeleaf:
     cache: false
   web:

@@ -13,8 +13,8 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.example.sbtemplate</groupId>
-    <artifactId>sbt-service-mono</artifactId>
+    <groupId>com.alvaromg.portfolio</groupId>
+    <artifactId>portfolio</artifactId>
     <name>${project.artifactId}</name>
     <description></description>
     <version>1.0.0</version>
