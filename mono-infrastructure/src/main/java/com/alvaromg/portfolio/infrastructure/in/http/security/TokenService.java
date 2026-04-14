@@ -22,12 +22,14 @@ import com.alvaromg.portfolio.application.shared.exceptions.specific.InvalidArgu
 import com.alvaromg.portfolio.application.shared.exceptions.specific.UnauthorizedException;
 import com.alvaromg.portfolio.infrastructure.in.http.controller.dto.in.auth.LoginRequest;
 import com.alvaromg.portfolio.infrastructure.in.http.controller.dto.out.TokenResponse;
+import com.alvaromg.portfolio.infrastructure.in.jsf.service.TelemetryService;
 
 @Service
 public class TokenService {
 
     @Autowired private AuthenticationManager authenticationManager;
     @Autowired private JwtService jwtService;
+    @Autowired private TelemetryService telemetryService;
     private final Map<String, Instant> revokedTokens = new ConcurrentHashMap<>();
 
     public TokenPair issueTokens(AuthenticatedUser user) {
@@ -128,6 +130,7 @@ public class TokenService {
                 new UsernamePasswordAuthenticationToken(request.email(), request.password())
             );
             AuthenticatedUser principal = (AuthenticatedUser) authentication.getPrincipal();
+            telemetryService.trackLogin(principal.getUsername());
             TokenPair pair = this.issueTokens(principal);
             return TokenResponse.from(pair);
         } catch (AuthenticationException ex) {

@@ -89,8 +89,12 @@ public class JsfPageController {
         model.addAttribute("telemetryStatsWeekLabel", "en".equals(lang) ? "This week" : "Esta semana");
         model.addAttribute("telemetryStatsMonthLabel", "en".equals(lang) ? "This month" : "Este mes");
         model.addAttribute("telemetryStatsYearLabel", "en".equals(lang) ? "This year" : "Este año");
+        model.addAttribute("telemetryLoginsTitle", "en".equals(lang) ? "Login history" : "Inicios de sesion");
+        model.addAttribute("telemetryLoginUserLabel", "en".equals(lang) ? "User" : "Usuario");
+        model.addAttribute("telemetryLoginTimeLabel", "en".equals(lang) ? "Time" : "Hora");
         model.addAttribute("telemetryLang", lang);
         model.addAttribute("telemetryRows", telemetryService.getRecentVisits());
+        model.addAttribute("telemetryLoginRows", telemetryService.getRecentLogins());
         model.addAttribute("telemetryStats", telemetryService.getVisitStats());
         model.addAttribute("canManageUsers", hasAuthority(authentication, RolesConstants.ADMIN));
         model.addAttribute("usersButtonLabel", text(lang, "Usuarios", "Users"));

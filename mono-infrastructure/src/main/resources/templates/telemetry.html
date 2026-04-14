@@ -62,6 +62,27 @@
       </tbody>
     </table>
   </div>
+
+  <h2 class="cv-section-h2 telemetry-subtitle" th:text="${telemetryLoginsTitle}">Inicios de sesion</h2>
+  <div class="telemetry-table-wrapper">
+    <table class="telemetry-table">
+      <thead>
+      <tr>
+        <th th:text="${telemetryLoginUserLabel}">Usuario</th>
+        <th th:text="${telemetryLoginTimeLabel}">Hora</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:if="${telemetryLoginRows == null or telemetryLoginRows.isEmpty()}">
+        <td colspan="2">No data</td>
+      </tr>
+      <tr th:each="row : ${telemetryLoginRows}">
+        <td th:text="${row.username}">admin</td>
+        <td th:text="${row.loggedAt}">2026-04-15 12:00:00</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
 </main>
 <script src="/telemetry.js" defer></script>
 </body>

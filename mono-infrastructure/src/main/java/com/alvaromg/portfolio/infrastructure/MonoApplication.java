@@ -23,7 +23,7 @@ public class MonoApplication {
     public static void main(String[] args) {
         TimerUtil timer = TimerUtil.create().start();
         ConfigurableApplicationContext ctx = SpringApplication.run(MonoApplication.class, args);
-        BannerUtil.create().name("Portfolio Backend").port(port(ctx)).time(timer.stop().getSeconds() + "s").print();
+        BannerUtil.create().name("Portfolio").port(port(ctx)).time(timer.stop().getSeconds() + "s").print();
     }
 
     /**

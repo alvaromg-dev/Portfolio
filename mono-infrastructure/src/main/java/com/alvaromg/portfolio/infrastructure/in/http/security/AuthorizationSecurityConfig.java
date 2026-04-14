@@ -2,6 +2,7 @@ package com.alvaromg.portfolio.infrastructure.in.http.security;
 
 import com.alvaromg.portfolio.application.roles.constants.RolesConstants;
 import com.alvaromg.portfolio.infrastructure.in.http.constants.EndpointsConstants;
+import com.alvaromg.portfolio.infrastructure.in.jsf.service.TelemetryService;
 import com.alvaromg.portfolio.infrastructure.out.jpa.entities.UserEntity;
 import com.alvaromg.portfolio.infrastructure.out.jpa.repository.jpaRepository.UserJpaRepository;
 import java.util.Locale;
@@ -39,7 +40,11 @@ public class AuthorizationSecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, TokenAuthenticationFilter tokenAuthenticationFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+        HttpSecurity http,
+        TokenAuthenticationFilter tokenAuthenticationFilter,
+        TelemetryService telemetryService
+    ) throws Exception {
         http.cors(Customizer.withDefaults());
         http.csrf(AbstractHttpConfigurer::disable);
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));
@@ -61,7 +66,10 @@ public class AuthorizationSecurityConfig {
         http.formLogin(form -> form
             .loginPage(EndpointsConstants.LOGIN_PAGE)
             .loginProcessingUrl(EndpointsConstants.LOGIN_PAGE)
-            .defaultSuccessUrl("/", false)
+            .successHandler((request, response, authentication) -> {
+                telemetryService.trackLogin(authentication == null ? null : authentication.getName());
+                response.sendRedirect("/");
+            })
             .failureUrl(EndpointsConstants.LOGIN_PAGE + "?error=true")
             .permitAll()
         );

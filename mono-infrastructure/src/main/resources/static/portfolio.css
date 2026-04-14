@@ -435,6 +435,10 @@ body:not(.editing) .cv-section.section-empty {
   background: #fff;
 }
 
+.telemetry-subtitle {
+  margin-top: 22px;
+}
+
 .telemetry-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

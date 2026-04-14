@@ -1,6 +1,8 @@
 package com.alvaromg.portfolio.infrastructure.in.jsf.service;
 
+import com.alvaromg.portfolio.infrastructure.out.jpa.entities.telemetry.TelemetryLoginEntity;
 import com.alvaromg.portfolio.infrastructure.out.jpa.entities.telemetry.TelemetryVisitEntity;
+import com.alvaromg.portfolio.infrastructure.out.jpa.repository.jpaRepository.telemetry.TelemetryLoginJpaRepository;
 import com.alvaromg.portfolio.infrastructure.out.jpa.repository.jpaRepository.telemetry.TelemetryVisitJpaRepository;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,6 +35,7 @@ public class TelemetryService {
     private static final ZoneId DEFAULT_ZONE = ZoneId.of("Europe/Madrid");
 
     private final TelemetryVisitJpaRepository telemetryVisitJpaRepository;
+    private final TelemetryLoginJpaRepository telemetryLoginJpaRepository;
 
     @Transactional
     public void trackVisit(HttpServletRequest request, HttpServletResponse response, String pagePath, String pageQuery, String pageSource) {
@@ -69,6 +72,28 @@ public class TelemetryService {
                 nonEmpty(entity.getBrowser(), "-"),
                 nonEmpty(entity.getDeviceType(), "-"),
                 formatVisitedAt(entity.getVisitedAt())
+            ))
+            .toList();
+    }
+
+    @Transactional
+    public void trackLogin(String username) {
+        if (isBlank(username)) {
+            return;
+        }
+
+        TelemetryLoginEntity entity = TelemetryLoginEntity.builder()
+            .username(truncate(username.trim().toLowerCase(Locale.ROOT), 255))
+            .build();
+        telemetryLoginJpaRepository.save(entity);
+    }
+
+    @Transactional(readOnly = true)
+    public List<TelemetryLoginRow> getRecentLogins() {
+        return telemetryLoginJpaRepository.findTop500ByOrderByLoggedAtDesc().stream()
+            .map(entity -> new TelemetryLoginRow(
+                entity.getUsername(),
+                formatIsoDateTime(entity.getLoggedAt())
             ))
             .toList();
     }
@@ -144,13 +169,17 @@ public class TelemetryService {
     }
 
     private static String formatVisitedAt(String visitedAt) {
-        if (visitedAt == null || visitedAt.isBlank()) {
+        return formatIsoDateTime(visitedAt);
+    }
+
+    private static String formatIsoDateTime(String dateTime) {
+        if (dateTime == null || dateTime.isBlank()) {
             return "-";
         }
         try {
-            return DISPLAY_FORMATTER.format(Instant.parse(visitedAt));
+            return DISPLAY_FORMATTER.format(Instant.parse(dateTime));
         } catch (Exception ignored) {
-            return visitedAt;
+            return dateTime;
         }
     }
 
@@ -366,6 +395,12 @@ public class TelemetryService {
         String browser,
         String device,
         String visitedAt
+    ) {
+    }
+
+    public record TelemetryLoginRow(
+        String username,
+        String loggedAt
     ) {
     }
 

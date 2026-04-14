@@ -15,9 +15,9 @@ public class BannerUtil {
 
     private StringBuilder sb;
     private String banner = """
-        ┏━┓ ┏┓    ╺┳╸ ┏━╸ ┏┳┓ ┏━┓ ╻   ┏━┓ ╺┳╸ ┏━╸
-        ┗━┓ ┣┻┓    ┃  ┣╸  ┃┃┃ ┣━┛ ┃   ┣━┫  ┃  ┣╸
-        ┗━┛ ┗━┛    ╹  ┗━╸ ╹ ╹ ╹   ┗━╸ ╹ ╹  ╹  ┗━╸
+        ┏━┓ ┏━┓ ┏━┓ ╺┳╸ ┏━╸ ┏━┓ ╻   ╻ ┏━┓
+        ┣━┛ ┃ ┃ ┣┳┛  ┃  ┣╸  ┃ ┃ ┃   ┃ ┃ ┃
+        ╹   ┗━┛ ╹┗╸  ╹  ╹   ┗━┛ ┗━╸ ╹ ┗━┛
         """;
     private Map<String, Object> info = new LinkedHashMap<>();
 
