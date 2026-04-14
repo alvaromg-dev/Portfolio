@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: sbt-service-mono
+  thymeleaf:
+    cache: false
+  web:
+    resources:
+      cache:
+        period: 0
+  datasource:
+    url: jdbc:sqlite:${TURSO_DB_FILE:./turso.db}
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      connection-init-sql: PRAGMA foreign_keys=ON
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    open-in-view: false
+  devtools:
+    restart:
+      enabled: true
+      additional-paths:
+        - src/main/java
+        - src/main/resources/templates
+        - src/main/resources/static
+    livereload:
+      enabled: true
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:AF24ZX2W} # default secret, should be changed in production
+    access-ttl: ${JWT_ACCESS_TTL:PT30M} # 30 minutes
+    refresh-ttl: ${JWT_REFRESH_TTL:P7D} # 7 days

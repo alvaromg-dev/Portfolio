@@ -1,0 +1,25 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "MonoApplication",
+            "request": "launch",
+            "mainClass": "com.example.sbtemplate.mono.infrastructure.MonoApplication",
+            "projectName": "sbt-service-mono-infrastructure"
+        },
+        {
+            "type": "java",
+            "name": "MonoApplication (perfil default + debug)",
+            "request": "launch",
+            "mainClass": "com.example.sbtemplate.mono.infrastructure.MonoApplication",
+            "projectName": "sbt-service-mono-infrastructure",
+            "cwd": "${workspaceFolder}/mono-infrastructure",
+            "vmArgs": "-Dspring.profiles.active=default",
+            "args": "--debug"
+        }
+    ]
+}

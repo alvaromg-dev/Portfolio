@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<body>
+<section class="cv-section section-border" th:classappend="${cv.hasAboutData()} ? '' : ' section-empty'" th:fragment="about(cv)">
+  <h2 class="cv-section-h2" th:text="${cv.aboutTitle}">Sobre mi</h2>
+  <div class="section-view">
+    <th:block th:replace="~{components/shared/list-item :: item(title=${null}, title2=${null}, description=${cv.basics.summary}, url=${null}, highlights=${null}, years=${null})}"></th:block>
+  </div>
+  <div class="section-editor" id="about-editor">
+    <label class="editor-field">
+      <span>Summary</span>
+      <textarea id="editor-summary" rows="5" th:text="${cv.basics.summary}"></textarea>
+    </label>
+  </div>
+</section>
+</body>
+</html>

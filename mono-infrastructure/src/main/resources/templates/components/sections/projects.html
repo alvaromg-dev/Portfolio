@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<body>
+<section class="cv-section section-border" th:classappend="${cv.hasProjectsData()} ? '' : ' section-empty'" th:fragment="projects(cv)">
+  <h2 class="cv-section-h2" th:text="${cv.projectsTitle}">Proyectos</h2>
+  <div class="section-view">
+    <ul class="stack-list" id="project-list-view">
+      <li th:each="project : ${cv.projects}"
+          th:attr="data-name=${project.name},data-url=${project.url},data-description=${project.description},data-highlights=${project.highlights != null ? #strings.listJoin(project.highlights,'||') : ''}">
+        <th:block th:replace="~{components/shared/list-item :: item(title=${project.name}, title2=${null}, description=${project.description}, url=${project.url}, highlights=${project.highlights}, years=${null})}"></th:block>
+      </li>
+    </ul>
+  </div>
+  <div class="section-editor" id="projects-editor" th:attr="data-add-label=${cv.addButtonLabel}">
+    <div class="editor-items"></div>
+    <button class="editor-add" type="button">+</button>
+  </div>
+</section>
+</body>
+</html>

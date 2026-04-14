@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" th:lang="${cv.currentLanguageCode}">
+<head th:replace="~{components/layout/head :: pageHead(pageTitle=${cv.pageTitle})}"></head>
+<body th:attr="data-lang=${cv.currentLanguageCode},data-edit-label=${cv.editButtonLabel},data-save-label=${cv.saveButtonLabel},data-add-label=${cv.addButtonLabel}">
+<div class="portfolio-top-actions">
+  <a class="portfolio-telemetry-link" th:href="@{/telemetry(lang=${cv.currentLanguageCode})}" th:text="${cv.telemetryButtonLabel}">Telemetria</a>
+  <button id="portfolio-edit-toggle" class="portfolio-edit-toggle" type="button" th:text="${cv.editButtonLabel}">Editar</button>
+</div>
+<main>
+  <th:block th:replace="~{components/sections/hero :: hero(cv=${cv})}"></th:block>
+  <th:block th:replace="~{components/sections/about :: about(cv=${cv})}"></th:block>
+  <th:block th:replace="~{components/sections/experience :: experience(cv=${cv})}"></th:block>
+  <th:block th:replace="~{components/sections/projects :: projects(cv=${cv})}"></th:block>
+  <th:block th:replace="~{components/sections/skills :: skills(cv=${cv})}"></th:block>
+  <th:block th:replace="~{components/sections/education :: education(cv=${cv})}"></th:block>
+</main>
+
+<script src="/portfolio.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<body>
+<article class="cv-list-item" th:fragment="item(title, title2, description, url, highlights, years)">
+  <header th:if="${!#strings.isEmpty(title) or !#strings.isEmpty(title2) or !#strings.isEmpty(description) or !#strings.isEmpty(years)}">
+    <h3 th:if="${!#strings.isEmpty(title)}">
+      <a th:if="${!#strings.isEmpty(url)}" th:href="${url}" target="_blank" th:text="${title}">Title</a>
+      <span th:if="${#strings.isEmpty(url)}" th:text="${title}">Title</span>
+    </h3>
+    <h4 th:if="${!#strings.isEmpty(title2)}" th:text="${title2}">Subtitle</h4>
+    <p th:if="${!#strings.isEmpty(description)}" th:text="${description}">Description</p>
+    <time class="date" th:if="${!#strings.isEmpty(years)}" th:text="${years}">Years</time>
+  </header>
+
+  <footer th:if="${highlights != null and !highlights.isEmpty()}">
+    <span th:each="highlight : ${highlights}" th:text="${highlight}">Tag</span>
+  </footer>
+</article>
+</body>
+</html>

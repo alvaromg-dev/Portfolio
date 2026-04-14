@@ -1,18 +1,35 @@
 services:
-  app:
-    image: oven/bun:latest
-    working_dir: /app
+  app-dev:
+    image: amazoncorretto:25
+    profiles:
+      - dev
+    working_dir: /workspace
     volumes:
-      - ./:/app
-    command: >
-      sh -c "bun install && bun run build && bun run start"
-    ports:
-      - "4173:4173"
+      - .:/workspace
+      - maven-repo:/root/.m2
     environment:
-      NODE_ENV: production
-    networks:
-      - reverse-proxy
+      SPRING_PROFILES_ACTIVE: dev
+    command: >
+      sh -c "./mvnw -pl mono-infrastructure -am -DskipTests package
+      && java -jar mono-infrastructure/target/*-infrastructure-*.jar"
+    ports:
+      - "8080:8080"
 
-networks:
-  reverse-proxy:
-    external: true
+  app-prod:
+    image: amazoncorretto:25
+    profiles:
+      - prod
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - maven-repo:/root/.m2
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+    command: >
+      sh -c "./mvnw -pl mono-infrastructure -am -DskipTests package
+      && java -jar mono-infrastructure/target/*-infrastructure-*.jar"
+    ports:
+      - "8080:8080"
+
+volumes:
+  maven-repo:
