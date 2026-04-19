@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
       args:
         PROFILE: ${PROFILE:-pro}
-    container_name: portfolio-${PROFILE:-pro}
+    container_name: portfolio
     env_file:
       - .env.${PROFILE:-pro}
     ports:
