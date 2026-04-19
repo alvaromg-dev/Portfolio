@@ -1,0 +1,191 @@
+---
+import type { HeaderNavigationState, HeaderNavOption, LanguageOption } from "@/lib/types";
+
+interface Props {
+  navigation: HeaderNavigationState;
+  currentPath: string;
+}
+
+const { navigation, currentPath } = Astro.props;
+---
+
+<header class="app-header">
+  <div class="app-header-inner">
+
+    {navigation.languages.length > 1 && currentPath === "/" && (
+      <div class="language-selector">
+        {navigation.languages.map((lang: LanguageOption) => (
+          <form class="language-selector-form" method="get" action="/">
+            <input type="hidden" name="lang" value={lang.code} />
+            <button type="submit"
+                    class:list={["language-selector-button", { active: lang.code === navigation.currentLanguage }]}>
+              {lang.code.toUpperCase()}
+            </button>
+          </form>
+        ))}
+      </div>
+    )}
+
+    <nav class="app-header-nav">
+      {navigation.navOptions.map((opt: HeaderNavOption) => (
+        <>
+          {!(opt.path === "/" && opt.active) && (
+            <form method="get" action={opt.path}>
+              {opt.path === "/" && <input type="hidden" name="lang" value={navigation.currentLanguage} />}
+              <button type="submit" class:list={["app-header-link", { active: opt.active }]}>{opt.label}</button>
+            </form>
+          )}
+          {opt.path === "/" && opt.active && navigation.showEditButton && (
+            <button id="portfolio-edit-toggle" class="app-header-link app-header-button" type="button">Edit</button>
+          )}
+        </>
+      ))}
+
+      {navigation.showLoginButton && (
+        <form method="get" action="/login">
+          <button type="submit" class="app-header-link app-header-button">Log in</button>
+        </form>
+      )}
+
+      {navigation.showLogoutButton && (
+        <form method="post" action="/api/logout" class="app-header-logout-form">
+          <button class="app-header-link app-header-button" type="submit">Log out</button>
+        </form>
+      )}
+    </nav>
+  </div>
+</header>
+
+<style>
+  .app-header {
+    position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
+    width: 100%;
+    z-index: auto;
+    background: #fff;
+  }
+
+  .app-header-inner {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: end;
+    gap: 8px;
+  }
+
+  .app-header-nav {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    box-shadow: 0 2px 10px #0000001e;
+    border: 1px solid #7ec8bf;
+    border-radius: 0 0 0 10px;
+    border-left: 0;
+    border-top: 0;
+  }
+
+  .app-header-nav form {
+    display: flex;
+  }
+
+  .app-header-link {
+    border: 0;
+    padding: 10px 16px;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--light-theme-primary-text) !important;
+    background: var(--blue) !important;
+    text-decoration: none !important;
+    border-left: 1px solid #7ec8bf;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .app-header-link.active {
+    background: #84d9cf !important;
+  }
+
+  .app-header-nav > :first-child .app-header-link {
+    border-left: 0;
+  }
+
+  .app-header-button {
+    appearance: none;
+  }
+
+  .app-header-button:disabled {
+    cursor: wait;
+    opacity: 0.8;
+  }
+
+  .app-header-logout-form {
+    display: flex;
+  }
+
+  .language-selector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .language-selector-form {
+    display: inline-flex;
+    justify-content: center;
+  }
+
+  .language-selector-button {
+    color: var(--light-theme-secondary-text);
+    border: 1px solid #d9d9d9;
+    border-radius: 999px;
+    text-decoration: none;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.15s ease;
+    background: #fff;
+    cursor: pointer;
+  }
+
+  .language-selector-button.active {
+    color: var(--light-theme-primary-text);
+    border-color: var(--blue);
+    background: rgba(149, 217, 210, 0.25);
+  }
+
+  @media (width <= 500px) {
+    .app-header-inner {
+      justify-content: center;
+      flex-direction: column;
+      flex-direction: column-reverse;
+    }
+    .app-header-nav {
+      border-radius: 0 0 10px 10px;
+    }
+  }
+
+  @media (width <= 850px) {
+    .language-selector {
+      justify-content: center;
+    }
+    .app-header-nav {
+      flex-wrap: wrap;
+      max-width: calc(100vw - 10px);
+    }
+    .app-header-link {
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+  }
+</style>

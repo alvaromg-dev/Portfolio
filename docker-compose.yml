@@ -1,35 +1,15 @@
 services:
-  app-dev:
-    image: amazoncorretto:25
-    profiles:
-      - dev
-    working_dir: /workspace
-    volumes:
-      - .:/workspace
-      - maven-repo:/root/.m2
-    environment:
-      SPRING_PROFILES_ACTIVE: dev
-    command: >
-      sh -c "./mvnw -pl mono-infrastructure -am -DskipTests package
-      && java -jar mono-infrastructure/target/*-infrastructure-*.jar"
+  portfolio:
+    image: portfolio
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROFILE: ${PROFILE:-pro}
+    container_name: portfolio-${PROFILE:-pro}
+    env_file:
+      - .env.${PROFILE:-pro}
     ports:
-      - "8080:8080"
-
-  app-prod:
-    image: amazoncorretto:25
-    profiles:
-      - prod
-    working_dir: /workspace
-    volumes:
-      - .:/workspace
-      - maven-repo:/root/.m2
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-    command: >
-      sh -c "./mvnw -pl mono-infrastructure -am -DskipTests package
-      && java -jar mono-infrastructure/target/*-infrastructure-*.jar"
-    ports:
-      - "8080:8080"
-
-volumes:
-  maven-repo:
+      - "${PORT:-4173}:4173"
+    restart: unless-stopped
+    command: ["node", "./dist/server/entry.mjs"]

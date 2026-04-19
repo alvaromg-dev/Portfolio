@@ -1,0 +1,40 @@
+{
+  "name": "portfolio",
+  "type": "module",
+  "version": "1.1.0",
+  "scripts": {
+
+    "dev": "astro dev --mode dev",
+    "dev:dev": "astro dev --mode dev",
+    "dev:pre": "astro dev --mode pre",
+    "dev:pro": "astro dev --mode pro",
+
+    "build": "astro build --mode pro",
+    "build:dev": "astro build --mode dev",
+    "build:pre": "astro build --mode pre",
+    "build:pro": "astro build --mode pro",
+
+    "start": "node ./scripts/start-with-env.mjs pro",
+    "start:dev": "node ./scripts/start-with-env.mjs dev",
+    "start:pre": "node ./scripts/start-with-env.mjs pre",
+    "start:pro": "node ./scripts/start-with-env.mjs pro",
+
+    "serve:dev": "npm run build:dev && npm run start:dev",
+    "serve:pre": "npm run build:pre && npm run start:pre",
+    "serve:pro": "npm run build:pro && npm run start:pro"
+  },
+  "dependencies": {
+    "@astrojs/node": "9.1.3",
+    "astro": "5.4.2",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^17.4.2",
+    "qrcode": "^1.5.3"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.8",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/pg": "^8.20.0",
+    "pg": "^8.20.0",
+    "typescript": "^5.9.3"
+  }
+}

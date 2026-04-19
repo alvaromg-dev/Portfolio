@@ -1,0 +1,18 @@
+---
+import Section from "./Section.astro"
+import ListItem from "./ListItem.astro"
+import type { PortfolioSkill } from "@/lib/types";
+
+interface Props {
+  skills: PortfolioSkill[];
+}
+
+const { skills } = Astro.props;
+
+const skillNames: string[] = [];
+skills.forEach(sk => skillNames.push(sk.name))
+---
+
+<Section title="Habilidades">
+  <ListItem highlights={skillNames} />
+</Section>

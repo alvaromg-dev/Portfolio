@@ -1,0 +1,265 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import "@/styles/global.css";
+import { getAvailableLanguages } from "@/lib/portfolio";
+import { getRecentVisits, getRecentLogins, getVisitStats } from "@/lib/telemetry";
+import { canAdminister } from "@/lib/roles";
+import type { HeaderNavigationState } from "@/lib/types";
+
+const user = Astro.locals.user!;
+const languages = await getAvailableLanguages();
+const visits = await getRecentVisits(50);
+const logins = await getRecentLogins(50);
+const stats = await getVisitStats();
+
+const navigation: HeaderNavigationState = {
+  navOptions: [
+    { label: "Portfolio", path: "/", active: false },
+    { label: "Telemetry", path: "/telemetry", active: true },
+    ...(canAdminister(user.roles) ? [
+      { label: "Users", path: "/users", active: false },
+      { label: "Languages", path: "/languages", active: false },
+    ] : []),
+  ],
+  showEditButton: false,
+  showLoginButton: false,
+  showLogoutButton: true,
+  languages,
+  currentLanguage: "es",
+};
+
+function formatDate(dateStr: string): string {
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleString("en-US", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+function formatLocation(country: string, region: string, city: string): string {
+  return [city, region, country].filter(Boolean).join(", ") || "Unknown";
+}
+---
+
+<Layout>
+  <Header navigation={navigation} currentPath="/telemetry" />
+  <main>
+    <section class="admin-section animation-appear fadeIn">
+      <h1>Telemetry</h1>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span class="stat-value">{stats.day}</span>
+          <span class="stat-label">Today</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value">{stats.week}</span>
+          <span class="stat-label">Week</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value">{stats.month}</span>
+          <span class="stat-label">Month</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value">{stats.year}</span>
+          <span class="stat-label">Year</span>
+        </div>
+      </div>
+
+      <h2>Recent visits</h2>
+      {visits.length === 0 ? (
+        <p class="empty">No visits recorded.</p>
+      ) : (
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Device</th>
+                <th>Location</th>
+                <th>Browser</th>
+                <th>Type</th>
+                <th>Date</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {visits.map((v) => (
+                <tr>
+                  <td>{v.operatingSystem}</td>
+                  <td>{formatLocation(v.country, v.region, v.city)}</td>
+                  <td>{v.browser}</td>
+                  <td>{v.deviceType}</td>
+                  <td>{formatDate(v.visitedAt)}</td>
+                  <td>
+                    <button class="delete-btn" data-id={v.id} title="Eliminar">✕</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <h2>Recent logins</h2>
+      {logins.length === 0 ? (
+        <p class="empty">No logins recorded.</p>
+      ) : (
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Location</th>
+                <th>IP</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {logins.map((l) => (
+                <tr>
+                  <td>{l.username}</td>
+                  <td>{formatLocation(l.country, l.region, l.city)}</td>
+                  <td>{l.ipAddress}</td>
+                  <td>{formatDate(l.loggedAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  </main>
+</Layout>
+
+<script>
+  document.querySelectorAll(".delete-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const visitId = (btn as HTMLElement).dataset.id;
+      if (!visitId || !confirm("Delete this visit?")) return;
+
+      const res = await fetch("/api/telemetry/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visitId }),
+      });
+
+      if (res.ok) {
+        (btn as HTMLElement).closest("tr")?.remove();
+      }
+    });
+  });
+</script>
+
+<style>
+  main {
+    padding: 20px 0 60px;
+  }
+
+  .admin-section {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  h1 {
+    color: var(--light-theme-primary-text);
+    font-weight: 700;
+    font-size: 2rem;
+    margin-bottom: 20px;
+  }
+
+  h2 {
+    color: var(--light-theme-primary-text);
+    font-weight: 600;
+    font-size: 1.3rem;
+    margin: 30px 0 12px;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    background: #f8f8f8;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stat-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--light-theme-primary-text);
+  }
+
+  .stat-label {
+    font-size: 13px;
+    color: var(--light-theme-secondary-text);
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th, td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid #f0f0f0;
+    white-space: nowrap;
+  }
+
+  th {
+    background: #f8f8f8;
+    color: var(--light-theme-primary-text);
+    font-weight: 600;
+    font-size: 13px;
+  }
+
+  td {
+    font-size: 14px;
+  }
+
+  .delete-btn {
+    background: transparent;
+    border: none;
+    color: #aaa;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: 0.15s;
+  }
+
+  .delete-btn:hover {
+    background: #fee2e2;
+    color: #b91c1c;
+  }
+
+  .empty {
+    color: var(--light-theme-secondary-text);
+    padding: 20px 0;
+  }
+
+  @media (width <= 640px) {
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+</style>

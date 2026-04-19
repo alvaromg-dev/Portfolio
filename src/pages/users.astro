@@ -1,0 +1,324 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import "@/styles/global.css";
+import { getAvailableLanguages } from "@/lib/portfolio";
+import { getUsers } from "@/lib/users";
+import { canEditPortfolio } from "@/lib/roles";
+import type { HeaderNavigationState } from "@/lib/types";
+
+const user = Astro.locals.user!;
+const languages = await getAvailableLanguages();
+const users = await getUsers();
+
+const error = Astro.url.searchParams.get("error");
+const success = Astro.url.searchParams.get("success");
+
+const navigation: HeaderNavigationState = {
+  navOptions: [
+    { label: "Portfolio", path: "/", active: false },
+    ...(canEditPortfolio(user.roles)
+      ? [{ label: "Telemetry", path: "/telemetry", active: false }]
+      : []),
+    { label: "Users", path: "/users", active: true },
+    { label: "Languages", path: "/languages", active: false },
+  ],
+  showEditButton: false,
+  showLoginButton: false,
+  showLogoutButton: true,
+  languages,
+  currentLanguage: "es",
+};
+---
+
+<Layout>
+  <Header navigation={navigation} currentPath="/users" />
+  <main>
+    <section class="admin-section animation-appear fadeIn">
+      <h1>User Management</h1>
+
+      {error && <div class="alert alert-error">{decodeURIComponent(error)}</div>}
+      {success && <div class="alert alert-success">{decodeURIComponent(success)}</div>}
+
+      <h2>Create user</h2>
+      <form method="POST" action="/api/users/create" class="form-card" autocomplete="off">
+        <div class="form-row">
+          <div class="form-field">
+            <label for="email">Username</label>
+            <input type="text" id="email" name="email" required placeholder="username" />
+          </div>
+          <div class="form-field">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required minlength="5"
+                   placeholder="Min. 5 characters" />
+          </div>
+        </div>
+
+        <button type="submit">Create user</button>
+      </form>
+
+      <h2>Registered users</h2>
+      {users.length === 0 ? (
+        <p class="empty">No registered users.</p>
+      ) : (
+        <div class="users-list">
+          {users.map((u) => (
+            <div class="user-card">
+              <div class="user-info">
+                <strong>{u.name}</strong>
+                {u.isAdmin && <span class="badge admin-badge">Admin</span>}
+              </div>
+
+              <div class="user-actions">
+                <details class="edit-details">
+                  <summary>Edit</summary>
+                  <form method="POST" action="/api/users/update" class="edit-form" autocomplete="off">
+                    <input type="hidden" name="userId" value={u.id} />
+                    <div class="form-field">
+                      <label>Username</label>
+                      <input type="text" name="givenNames" value={u.name} required />
+                    </div>
+                    <div class="form-field">
+                      <label>New password (leave empty to keep current)</label>
+                      <input type="password" name="newPassword" minlength="5"
+                             placeholder="Min. 5 characters" />
+                    </div>
+                    <button type="submit">Save</button>
+                  </form>
+                </details>
+
+                {!u.isAdmin && (
+                  <form method="POST" action="/api/users/delete" class="inline-form"
+                        onsubmit="return confirm('Delete this user?')">
+                    <input type="hidden" name="userId" value={u.id} />
+                    <button type="submit" class="delete-btn">Delete</button>
+                  </form>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  </main>
+</Layout>
+
+<style>
+  main {
+    padding: 20px 0 60px;
+  }
+
+  .admin-section {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  h1 {
+    color: var(--light-theme-primary-text);
+    font-weight: 700;
+    font-size: 2rem;
+    margin-bottom: 20px;
+  }
+
+  h2 {
+    color: var(--light-theme-primary-text);
+    font-weight: 600;
+    font-size: 1.3rem;
+    margin: 30px 0 12px;
+  }
+
+  .alert {
+    padding: 10px 14px;
+    border-radius: 5px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+
+  .alert-error {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+  }
+
+  .alert-success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+  }
+
+  .form-card {
+    background: #f8f8f8;
+    border-radius: 8px;
+    padding: 20px;
+    display: grid;
+    gap: 14px;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .form-field label {
+    color: var(--light-theme-primary-text);
+    font-weight: 500;
+    font-size: 14px;
+  }
+
+  input[type="text"],
+  input[type="password"] {
+    width: 100%;
+    border: 1px solid #dadada;
+    border-radius: 5px;
+    padding: 8px 10px;
+    color: var(--light-theme-primary-text);
+    background: #fff;
+    outline: none;
+  }
+
+  input:focus {
+    border-color: var(--blue);
+  }
+
+  .checkbox-group {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    font-weight: 400;
+  }
+
+  input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--blue);
+  }
+
+  button {
+    border: 0;
+    border-radius: 5px;
+    font-weight: 500;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: transform 0.1s;
+    color: var(--light-theme-primary-text);
+    background: var(--blue);
+  }
+
+  button:hover {
+    transform: scale(0.98);
+  }
+
+  .users-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .user-card {
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
+    padding: 14px 18px;
+  }
+
+  .user-info strong {
+    color: var(--light-theme-primary-text);
+    margin-right: 8px;
+  }
+
+  .user-name {
+    display: block;
+    margin-top: 4px;
+    font-size: 14px;
+  }
+
+  .user-roles {
+    margin-top: 6px;
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .badge {
+    background: var(--light-theme-tertiary-text);
+    color: var(--light-theme-secondary-text);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  .admin-badge {
+    background: var(--blue);
+    color: var(--light-theme-primary-text);
+  }
+
+  .user-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .edit-details {
+    flex: 1;
+  }
+
+  .edit-details summary {
+    cursor: pointer;
+    color: var(--light-theme-secondary-text);
+    font-weight: 500;
+    font-size: 14px;
+    user-select: none;
+  }
+
+  .edit-form {
+    margin-top: 10px;
+    display: grid;
+    gap: 10px;
+    background: #fafafa;
+    padding: 14px;
+    border-radius: 6px;
+  }
+
+  .delete-btn {
+    background: transparent;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+
+  .delete-btn:hover {
+    background: #fee2e2;
+  }
+
+  .inline-form {
+    display: inline;
+  }
+
+  .empty {
+    color: var(--light-theme-secondary-text);
+    padding: 20px 0;
+  }
+
+  @media (width <= 640px) {
+    .form-row {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

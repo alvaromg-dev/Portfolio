@@ -1,0 +1,45 @@
+---
+import Portfolio from "./Portfolio.astro";
+import Layout from "../layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import "../styles/global.css";
+import { getPortfolioData, getAvailableLanguages, resolveLanguageCode } from "@/lib/portfolio";
+import { trackVisit } from "@/lib/telemetry";
+import { canAdminister, canEditPortfolio } from "@/lib/roles";
+import type { HeaderNavigationState } from "@/lib/types";
+
+const langParam = Astro.url.searchParams.get("lang");
+const langCode = await resolveLanguageCode(langParam);
+const data = await getPortfolioData(langCode);
+const availableLanguages = await getAvailableLanguages();
+
+const user = Astro.locals.user;
+const isEditor = canEditPortfolio(user?.roles);
+const isAdmin = canAdminister(user?.roles);
+
+const navigation: HeaderNavigationState = {
+  navOptions: [
+    { label: "Portfolio", path: "/", active: true },
+    ...(isEditor ? [{ label: "Telemetry", path: "/telemetry", active: false }] : []),
+    ...(isAdmin ? [
+      { label: "Users", path: "/users", active: false },
+      { label: "Languages", path: "/languages", active: false },
+    ] : []),
+  ],
+  showEditButton: isEditor,
+  showLoginButton: user == null,
+  showLogoutButton: user != null,
+  languages: availableLanguages,
+  currentLanguage: langCode,
+};
+
+// Track visit (fire-and-forget)
+try {
+  await trackVisit(Astro.request);
+} catch { /* telemetry should never break the page */ }
+---
+
+<Layout>
+  <Header navigation={navigation} currentPath="/" />
+  <Portfolio data={data} canEdit={isEditor} langCode={langCode} />
+</Layout>

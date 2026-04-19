@@ -1,0 +1,675 @@
+---
+import About from "@/components/sections/About.astro";
+import Education from "@/components/sections/Education.astro";
+import Experience from "@/components/sections/Experience.astro";
+import Hero from "@/components/sections/Hero.astro";
+import Projects from "@/components/sections/Projects.astro";
+import Skills from "@/components/sections/Skills.astro";
+import type { PortfolioData } from "@/lib/types";
+
+interface Props {
+  data: PortfolioData;
+  canEdit: boolean;
+  langCode: string;
+}
+
+const { data, canEdit, langCode } = Astro.props;
+const basics = data.basics;
+const aboutMe = data.aboutMe || "";
+
+let linkedinUrl = "";
+let githubUrl = "";
+if (basics) {
+  for (const p of basics.profiles) {
+    if (p.network === "LinkedIn") linkedinUrl = p.url;
+    else if (p.network === "GitHub") githubUrl = p.url;
+  }
+}
+---
+
+<main>
+  <!-- HERO -->
+  <section class:list={["cv-section", "section-border", { "section-empty": !basics }]}>
+    {basics && <div class="section-view"><Hero basics={basics} /></div>}
+    {canEdit && (
+      <div class="section-editor hero-editor" id="hero-editor">
+        <div class="editor-grid editor-grid-2">
+          <label class="editor-field"><span>Image</span><button id="editor-image-picker" type="button" class="editor-image-button">Select Image (JPG 1:1)</button></label>
+          <label class="editor-field"><span>Name</span><input id="editor-name" type="text" value={basics?.name || ""} /></label>
+          <label class="editor-field"><span>Summary</span><input id="editor-label" type="text" value={basics?.label || ""} maxlength="154" /></label>
+          <label class="editor-field"><span>Status</span><input id="editor-status" type="text" value={basics?.status || ""} /></label>
+          <label class="editor-field"><span>Email</span><input id="editor-email" type="email" value={basics?.email || ""} /></label>
+          <label class="editor-field"><span>LinkedIn URL</span><input id="editor-linkedin" type="text" value={linkedinUrl} /></label>
+          <label class="editor-field"><span>GitHub URL</span><input id="editor-github" type="text" value={githubUrl} /></label>
+        </div>
+        <input id="editor-image-file" type="file" accept="image/jpeg,.jpg,.jpeg" hidden />
+        <input id="editor-image" type="hidden" value={basics?.image || ""} />
+      </div>
+    )}
+  </section>
+
+  <!-- ABOUT -->
+  <section class:list={["cv-section", "section-border", { "section-empty": !aboutMe }]}> 
+    <h2 class="edit-section-title">Sobre mí</h2>
+    <div class="section-view"><About summary={aboutMe} /></div>
+    {canEdit && (
+      <div class="section-editor" id="about-editor">
+        <label class="editor-field">
+          <span>Summary</span>
+          <textarea id="editor-summary" rows="5">{aboutMe}</textarea>
+        </label>
+      </div>
+    )}
+  </section>
+
+  <!-- WORK -->
+  <section class:list={["cv-section", "section-border", { "section-empty": data.work.length === 0 }]}>
+    <h2 class="edit-section-title">Experiencia laboral</h2>
+    <div class="section-view">
+      <Experience work={data.work} />
+    </div>
+    <ul id="work-list-view" hidden>
+      {data.work.map((job) => (
+        <li data-name={job.name}
+            data-position={job.position}
+            data-url={job.url || ""}
+            data-start-date={job.startDate}
+            data-end-date={job.endDate || ""}
+            data-summary={job.summary}
+            data-highlights={job.highlights.join("||")}>        </li>
+      ))}
+    </ul>
+    {canEdit && (
+      <div class="section-editor" id="work-editor">
+        <div class="editor-items"></div>
+        <button class="editor-add" type="button">+</button>
+      </div>
+    )}
+  </section>
+
+  <!-- PROJECTS -->
+  <section class:list={["cv-section", "section-border", { "section-empty": data.projects.length === 0 }]}>
+    <h2 class="edit-section-title">Proyectos</h2>
+    <div class="section-view">
+      <Projects projects={data.projects} />
+    </div>
+    <ul id="project-list-view" hidden>
+      {data.projects.map((project) => (
+        <li data-name={project.name}
+            data-url={project.url || ""}
+            data-description={project.description}
+            data-highlights={project.highlights.join("||")}>        </li>
+      ))}
+    </ul>
+    {canEdit && (
+      <div class="section-editor" id="projects-editor">
+        <div class="editor-items"></div>
+        <button class="editor-add" type="button">+</button>
+      </div>
+    )}
+  </section>
+
+  <!-- SKILLS -->
+  <section class:list={["cv-section", "section-border", { "section-empty": data.skills.length === 0 }]}>
+    <h2 class="edit-section-title">Habilidades</h2>
+    <div class="section-view">
+      <Skills skills={data.skills} />
+    </div>
+    <ul id="skills-list-view" hidden>
+      {data.skills.map((skill) => (
+        <li data-name={skill.name}></li>
+      ))}
+    </ul>
+    {canEdit && (
+      <div class="section-editor" id="skills-editor">
+        <div class="editor-items"></div>
+        <button class="editor-add" type="button">+</button>
+      </div>
+    )}
+  </section>
+
+  <!-- EDUCATION -->
+  <section class:list={["cv-section", "section-border", { "section-empty": data.education.length === 0 }]}>
+    <h2 class="edit-section-title">Educación</h2>
+    <div class="section-view">
+      <Education education={data.education} />
+    </div>
+    <ul id="education-list-view" hidden>
+      {data.education.map((edu) => (
+        <li data-institution={edu.institution}
+            data-area={edu.area}
+            data-url={edu.url || ""}
+            data-start-date={edu.startDate}
+            data-end-date={edu.endDate || ""}
+            data-courses={edu.courses.join("||")}>        </li>
+      ))}
+    </ul>
+    {canEdit && (
+      <div class="section-editor" id="education-editor">
+        <div class="editor-items"></div>
+        <button class="editor-add" type="button">+</button>
+      </div>
+    )}
+  </section>
+</main>
+
+{canEdit && (
+  <script define:vars={{ langCode }}>
+    document.addEventListener("DOMContentLoaded", () => {
+      const toggleButton = document.getElementById("portfolio-edit-toggle");
+      if (!toggleButton) return;
+
+      const body = document.body;
+      const editLabel = "Edit";
+      const saveLabel = "Save";
+
+      const state = {
+        editing: false,
+        work: readWorkItemsFromView(),
+        projects: readProjectItemsFromView(),
+        skills: readSkillItemsFromView(),
+        education: readEducationItemsFromView()
+      };
+
+      setupImagePicker();
+      renderWorkEditor(state.work);
+      renderProjectsEditor(state.projects);
+      renderSkillsEditor(state.skills);
+      renderEducationEditor(state.education);
+      attachAddButtons(state);
+      attachRemoveHandlers(state);
+
+      toggleButton.addEventListener("click", async () => {
+        if (!state.editing) {
+          state.editing = true;
+          body.classList.add("editing");
+          toggleButton.textContent = saveLabel;
+          return;
+        }
+
+        toggleButton.disabled = true;
+        try {
+          const payload = buildPayload();
+          const response = await fetch("/api/portfolio", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ languageCode: langCode, data: payload })
+          });
+
+          if (!response.ok) {
+            let message = "Could not save changes.";
+            try {
+              const body = await response.json();
+              if (body?.error) message = `${message}\n${body.error}`;
+            } catch {
+              // Keep default message when response isn't JSON.
+            }
+            alert(message);
+            return;
+          }
+
+          window.location.href = `/?lang=${encodeURIComponent(langCode)}`;
+        } catch (error) {
+          alert("Could not save changes.");
+        } finally {
+          toggleButton.disabled = false;
+          toggleButton.textContent = state.editing ? saveLabel : editLabel;
+        }
+      });
+
+      function buildPayload() {
+        const basics = {
+          name: valueOf("editor-name"),
+          label: valueOf("editor-label"),
+          image: valueOf("editor-image"),
+          email: valueOf("editor-email"),
+          status: valueOf("editor-status"),
+          profiles: []
+        };
+        const linkedin = valueOf("editor-linkedin");
+        const github = valueOf("editor-github");
+        if (linkedin) basics.profiles.push({ network: "LinkedIn", url: linkedin });
+        if (github) basics.profiles.push({ network: "GitHub", url: github });
+
+        return {
+          basics,
+          aboutMe: valueOf("editor-summary"),
+          work: readWorkItemsFromEditor(),
+          projects: readProjectItemsFromEditor(),
+          skills: readSkillItemsFromEditor(),
+          education: readEducationItemsFromEditor()
+        };
+      }
+
+      function attachAddButtons(editorState) {
+        setupSectionAdd(document.getElementById("work-editor"), () => {
+          editorState.work = readWorkItemsFromEditor();
+          editorState.work.push({ name: "", position: "", url: "", startDate: "", endDate: "", summary: "", highlights: [] });
+          renderWorkEditor(editorState.work);
+          attachRemoveHandlers(editorState);
+        });
+        setupSectionAdd(document.getElementById("projects-editor"), () => {
+          editorState.projects = readProjectItemsFromEditor();
+          editorState.projects.push({ name: "", description: "", url: "", highlights: [] });
+          renderProjectsEditor(editorState.projects);
+          attachRemoveHandlers(editorState);
+        });
+        setupSectionAdd(document.getElementById("skills-editor"), () => {
+          editorState.skills = readSkillItemsFromEditor();
+          editorState.skills.push({ name: "" });
+          renderSkillsEditor(editorState.skills);
+          attachRemoveHandlers(editorState);
+        });
+        setupSectionAdd(document.getElementById("education-editor"), () => {
+          editorState.education = readEducationItemsFromEditor();
+          editorState.education.push({ institution: "", area: "", url: "", startDate: "", endDate: "", courses: [] });
+          renderEducationEditor(editorState.education);
+          attachRemoveHandlers(editorState);
+        });
+      }
+
+      function attachRemoveHandlers(editorState) {
+        document.querySelectorAll("[data-remove-work]").forEach((btn) => {
+          btn.onclick = () => {
+            editorState.work = readWorkItemsFromEditor();
+            editorState.work.splice(Number(btn.dataset.removeWork), 1);
+            renderWorkEditor(editorState.work);
+            attachRemoveHandlers(editorState);
+          };
+        });
+        document.querySelectorAll("[data-remove-project]").forEach((btn) => {
+          btn.onclick = () => {
+            editorState.projects = readProjectItemsFromEditor();
+            editorState.projects.splice(Number(btn.dataset.removeProject), 1);
+            renderProjectsEditor(editorState.projects);
+            attachRemoveHandlers(editorState);
+          };
+        });
+        document.querySelectorAll("[data-remove-skill]").forEach((btn) => {
+          btn.onclick = () => {
+            editorState.skills = readSkillItemsFromEditor();
+            editorState.skills.splice(Number(btn.dataset.removeSkill), 1);
+            renderSkillsEditor(editorState.skills);
+            attachRemoveHandlers(editorState);
+          };
+        });
+        document.querySelectorAll("[data-remove-education]").forEach((btn) => {
+          btn.onclick = () => {
+            editorState.education = readEducationItemsFromEditor();
+            editorState.education.splice(Number(btn.dataset.removeEducation), 1);
+            renderEducationEditor(editorState.education);
+            attachRemoveHandlers(editorState);
+          };
+        });
+      }
+
+      function setupSectionAdd(container, onAdd) {
+        if (!container) return;
+        const btn = container.querySelector(".editor-add");
+        if (btn) btn.onclick = onAdd;
+      }
+
+      // --- Render editors ---
+      function renderWorkEditor(items) {
+        const c = document.querySelector("#work-editor .editor-items");
+        if (!c) return;
+        c.innerHTML = "";
+        items.forEach((item, i) => {
+          const d = document.createElement("div");
+          d.className = "editor-item";
+          d.innerHTML = `
+            <button type="button" class="editor-remove" data-remove-work="${i}">×</button>
+            <label class="editor-field"><span>Company</span><input type="text" data-field="name" value="${esc(item.name)}"></label>
+            <label class="editor-field"><span>Position</span><input type="text" data-field="position" value="${esc(item.position)}"></label>
+            <label class="editor-field"><span>Start Date</span><input type="text" data-field="startDate" value="${esc(item.startDate)}" placeholder="2026-01-01"></label>
+            <label class="editor-field"><span>End Date</span><input type="text" data-field="endDate" value="${esc(item.endDate)}" placeholder="2026-12-31"></label>
+            <label class="editor-field"><span>URL</span><input type="text" data-field="url" value="${esc(item.url)}"></label>
+            <label class="editor-field editor-field-full"><span>Summary</span><textarea data-field="summary" rows="3">${esc(item.summary)}</textarea></label>
+            <label class="editor-field editor-field-full"><span>Highlights (comma separated)</span><input type="text" data-field="highlights" value="${esc((item.highlights || []).join(", "))}"></label>`;
+          c.appendChild(d);
+        });
+      }
+
+      function renderProjectsEditor(items) {
+        const c = document.querySelector("#projects-editor .editor-items");
+        if (!c) return;
+        c.innerHTML = "";
+        items.forEach((item, i) => {
+          const d = document.createElement("div");
+          d.className = "editor-item";
+          d.innerHTML = `
+            <button type="button" class="editor-remove" data-remove-project="${i}">×</button>
+            <label class="editor-field"><span>Name</span><input type="text" data-field="name" value="${esc(item.name)}"></label>
+            <label class="editor-field"><span>URL</span><input type="text" data-field="url" value="${esc(item.url)}"></label>
+            <label class="editor-field editor-field-full"><span>Description</span><textarea data-field="description" rows="3">${esc(item.description)}</textarea></label>
+            <label class="editor-field editor-field-full"><span>Highlights (comma separated)</span><input type="text" data-field="highlights" value="${esc((item.highlights || []).join(", "))}"></label>`;
+          c.appendChild(d);
+        });
+      }
+
+      function renderSkillsEditor(items) {
+        const c = document.querySelector("#skills-editor .editor-items");
+        if (!c) return;
+        c.innerHTML = "";
+        items.forEach((item, i) => {
+          const d = document.createElement("div");
+          d.className = "editor-item";
+          d.innerHTML = `
+            <button type="button" class="editor-remove" data-remove-skill="${i}">×</button>
+            <label class="editor-field editor-field-full"><span>Skill</span><input type="text" data-field="name" value="${esc(item.name)}"></label>`;
+          c.appendChild(d);
+        });
+      }
+
+      function renderEducationEditor(items) {
+        const c = document.querySelector("#education-editor .editor-items");
+        if (!c) return;
+        c.innerHTML = "";
+        items.forEach((item, i) => {
+          const d = document.createElement("div");
+          d.className = "editor-item";
+          d.innerHTML = `
+            <button type="button" class="editor-remove" data-remove-education="${i}">×</button>
+            <label class="editor-field"><span>Institution</span><input type="text" data-field="institution" value="${esc(item.institution)}"></label>
+            <label class="editor-field"><span>Area</span><input type="text" data-field="area" value="${esc(item.area)}"></label>
+            <label class="editor-field"><span>Start Date</span><input type="text" data-field="startDate" value="${esc(item.startDate)}" placeholder="2026-01-01"></label>
+            <label class="editor-field"><span>End Date</span><input type="text" data-field="endDate" value="${esc(item.endDate)}" placeholder="2026-12-31"></label>
+            <label class="editor-field"><span>URL</span><input type="text" data-field="url" value="${esc(item.url)}"></label>
+            <label class="editor-field editor-field-full"><span>Courses (comma separated)</span><input type="text" data-field="courses" value="${esc((item.courses || []).join(", "))}"></label>`;
+          c.appendChild(d);
+        });
+      }
+
+      // --- Read from view (data-* attributes) ---
+      function readWorkItemsFromView() {
+        return Array.from(document.querySelectorAll("#work-list-view > li")).map((el) => ({
+          name: el.dataset.name || "", position: el.dataset.position || "", url: el.dataset.url || "",
+          startDate: el.dataset.startDate || "", endDate: el.dataset.endDate || "",
+          summary: el.dataset.summary || "", highlights: splitList(el.dataset.highlights)
+        }));
+      }
+      function readProjectItemsFromView() {
+        return Array.from(document.querySelectorAll("#project-list-view > li")).map((el) => ({
+          name: el.dataset.name || "", url: el.dataset.url || "",
+          description: el.dataset.description || "", highlights: splitList(el.dataset.highlights)
+        }));
+      }
+      function readSkillItemsFromView() {
+        return Array.from(document.querySelectorAll("#skills-list-view > li")).map((el) => ({
+          name: el.dataset.name || ""
+        }));
+      }
+      function readEducationItemsFromView() {
+        return Array.from(document.querySelectorAll("#education-list-view > li")).map((el) => ({
+          institution: el.dataset.institution || "", area: el.dataset.area || "", url: el.dataset.url || "",
+          startDate: el.dataset.startDate || "", endDate: el.dataset.endDate || "",
+          courses: splitList(el.dataset.courses)
+        }));
+      }
+
+      // --- Read from editor inputs ---
+      function readWorkItemsFromEditor() {
+        return Array.from(document.querySelectorAll("#work-editor .editor-item")).map((el) => ({
+          name: rf(el, "name"), position: rf(el, "position"), url: rf(el, "url"),
+          startDate: rf(el, "startDate"), endDate: rf(el, "endDate"),
+          summary: rf(el, "summary"), highlights: splitComma(rf(el, "highlights"))
+        }));
+      }
+      function readProjectItemsFromEditor() {
+        return Array.from(document.querySelectorAll("#projects-editor .editor-item")).map((el) => ({
+          name: rf(el, "name"), description: rf(el, "description"), url: rf(el, "url"),
+          highlights: splitComma(rf(el, "highlights"))
+        }));
+      }
+      function readSkillItemsFromEditor() {
+        return Array.from(document.querySelectorAll("#skills-editor .editor-item")).map((el) => ({
+          name: rf(el, "name")
+        }));
+      }
+      function readEducationItemsFromEditor() {
+        return Array.from(document.querySelectorAll("#education-editor .editor-item")).map((el) => ({
+          institution: rf(el, "institution"), area: rf(el, "area"), url: rf(el, "url"),
+          startDate: rf(el, "startDate"), endDate: rf(el, "endDate"),
+          courses: splitComma(rf(el, "courses"))
+        }));
+      }
+
+      // --- Helpers ---
+      function rf(container, field) {
+        const el = container.querySelector(`[data-field="${field}"]`);
+        return el && el.value ? el.value.trim() : "";
+      }
+      function valueOf(id) {
+        const el = document.getElementById(id);
+        return el && el.value ? el.value.trim() : "";
+      }
+      function splitComma(v) {
+        return v ? v.split(",").map(s => s.trim()).filter(s => s.length > 0) : [];
+      }
+      function splitList(v) {
+        return v ? v.split("||").map(s => s.trim()).filter(s => s.length > 0) : [];
+      }
+      function esc(v) {
+        return (v || "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+      }
+
+      // --- Image picker ---
+      function setupImagePicker() {
+        const pickerBtn = document.getElementById("editor-image-picker");
+        const fileInput = document.getElementById("editor-image-file");
+        const hiddenInput = document.getElementById("editor-image");
+        const preview = document.getElementById("me");
+        if (!pickerBtn || !fileInput || !hiddenInput || !preview) return;
+
+        const openPicker = () => fileInput.click();
+        pickerBtn.addEventListener("click", openPicker);
+        preview.addEventListener("click", () => {
+          if (document.body.classList.contains("editing")) openPicker();
+        });
+
+        fileInput.addEventListener("change", async () => {
+          const file = fileInput.files && fileInput.files[0];
+          if (!file) return;
+          const isJpeg = file.type === "image/jpeg" || file.type === "image/jpg" || /\.(jpe?g)$/i.test(file.name);
+          if (!isJpeg) { alert("Select a JPG/JPEG image."); fileInput.value = ""; return; }
+          try {
+            const base64 = await new Promise((resolve, reject) => {
+              const r = new FileReader();
+              r.onload = () => resolve(String(r.result || ""));
+              r.onerror = () => reject(new Error("file_read_error"));
+              r.readAsDataURL(file);
+            });
+            const dims = await new Promise((resolve, reject) => {
+              const img = new Image();
+              img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+              img.onerror = () => reject(new Error("image_decode_error"));
+              img.src = base64;
+            });
+            if (dims.w !== dims.h) { alert("Image must be square (1:1)."); fileInput.value = ""; return; }
+            hiddenInput.value = base64;
+            preview.src = base64;
+          } catch (e) { alert("Could not process image."); }
+          finally { fileInput.value = ""; }
+        });
+      }
+    });
+  </script>
+)}
+
+<style is:global>
+  .cv-section {
+    max-width: 700px;
+    margin: 0 auto 48px;
+    position: relative;
+  }
+
+  .cv-section-h2 {
+    margin-bottom: 8px;
+    font-weight: 700;
+    line-height: 1.5;
+    font-size: 2rem;
+    color: var(--light-theme-primary-text);
+  }
+
+  .section-border {
+    outline: 2px dashed transparent;
+    outline-offset: 5px;
+    transition: 0.5s;
+    border-radius: 2px;
+  }
+
+  .section-border:hover {
+    outline-color: var(--blue);
+  }
+
+  .section-editor {
+    display: none;
+    border: 1px solid #e8e8e8;
+    border-radius: 10px;
+    padding: 14px;
+    background: #fbfbfb;
+  }
+
+  .hero-editor {
+    margin-top: 12px;
+  }
+
+  .edit-section-title {
+    display: none;
+    margin-bottom: 8px;
+    font-weight: 700;
+    line-height: 1.5;
+    font-size: 2rem;
+    color: var(--light-theme-primary-text);
+  }
+
+  body.editing .edit-section-title {
+    display: block;
+  }
+
+  body.editing .section-view {
+    display: none;
+  }
+
+  body.editing .section-editor {
+    display: block;
+  }
+
+  body.editing #me {
+    cursor: pointer;
+  }
+
+  body:not(.editing) .cv-section.section-empty {
+    display: none;
+  }
+
+  .stack-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .editor-grid {
+    display: grid;
+    gap: 10px;
+  }
+
+  .editor-grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .editor-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .editor-field span {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--light-theme-primary-text);
+  }
+
+  .editor-field input,
+  .editor-field textarea {
+    border: 1px solid #dbdbdb;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 14px;
+    color: var(--light-theme-primary-text);
+    background: #fff;
+  }
+
+  .editor-image-button {
+    border: 1px solid #dbdbdb;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--light-theme-primary-text);
+    padding: 8px 10px;
+    font-size: 14px;
+    font-weight: 300;
+    text-align: left;
+    width: 100%;
+    cursor: pointer;
+    min-height: 38px;
+  }
+
+  .editor-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .editor-item {
+    border: 1px solid #e2e2e2;
+    border-radius: 8px;
+    padding: 12px;
+    background: #fff;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    position: relative;
+  }
+
+  .editor-field-full {
+    grid-column: 1 / -1;
+  }
+
+  .editor-add {
+    margin-top: 10px;
+    border: 1px solid #d5d5d5;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--light-theme-primary-text);
+    width: 36px;
+    height: 36px;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .editor-remove {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 26px;
+    height: 26px;
+    border: 1px solid #e3e3e3;
+    border-radius: 6px;
+    background: #fff;
+    color: #9a9a9a;
+    cursor: pointer;
+  }
+
+  @media (width <= 850px) {
+    .cv-section {
+      max-width: 90%;
+    }
+
+    .editor-grid-2,
+    .editor-item {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

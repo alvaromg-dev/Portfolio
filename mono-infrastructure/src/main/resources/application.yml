@@ -1,9 +1,0 @@
-springdoc:
-  swagger-ui:
-    path: /api/mono/swagger/index.html
-  api-docs:
-    path: /api/mono/swagger/api-docs
-
-spring:
-  config:
-    import: properties.yml

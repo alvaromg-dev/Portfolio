@@ -1,0 +1,44 @@
+---
+import Section from "./Section.astro"
+import ListItem from "./ListItem.astro"
+import type { PortfolioWork } from "@/lib/types";
+
+interface Props {
+  work: PortfolioWork[];
+}
+
+const { work } = Astro.props;
+---
+
+<Section title="Experiencia laboral">
+  <ul>
+    {
+      work.map(
+        ({ name, startDate, endDate, position, summary, highlights, url }) => {
+          const safeUrl: string | undefined = url == null ? undefined : url;
+          return (
+            <li>
+              <ListItem title={name}
+                        title2={position}
+                        highlights={highlights}
+                        description={summary}
+                        url={safeUrl}
+                        startDate={(startDate != null ? new Date(startDate) : null)}
+                        endDate={(endDate != null ? new Date(endDate) : null)}/>
+            </li>
+          )
+        }
+      )
+    }
+  </ul>
+</Section>
+
+<style>
+  ul {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+</style>

@@ -1,0 +1,312 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import "@/styles/global.css";
+import { getAvailableLanguages } from "@/lib/portfolio";
+import { getLanguages } from "@/lib/languages";
+import { canEditPortfolio } from "@/lib/roles";
+import type { HeaderNavigationState } from "@/lib/types";
+
+const user = Astro.locals.user!;
+const availableLanguages = await getAvailableLanguages();
+const allLanguages = await getLanguages();
+
+const error = Astro.url.searchParams.get("error");
+const success = Astro.url.searchParams.get("success");
+
+const navigation: HeaderNavigationState = {
+  navOptions: [
+    { label: "Portfolio", path: "/", active: false },
+    ...(canEditPortfolio(user.roles)
+      ? [{ label: "Telemetría", path: "/telemetry", active: false }]
+      : []),
+    { label: "Users", path: "/users", active: false },
+    { label: "Languages", path: "/languages", active: true },
+  ],
+  showEditButton: false,
+  showLoginButton: false,
+  showLogoutButton: true,
+  languages: availableLanguages,
+  currentLanguage: "es",
+};
+---
+
+<Layout>
+  <Header navigation={navigation} currentPath="/languages" />
+  <main>
+    <section class="admin-section animation-appear fadeIn">
+      <h1>Language Management</h1>
+
+      {error && <div class="alert alert-error">{decodeURIComponent(error)}</div>}
+      {success && <div class="alert alert-success">{decodeURIComponent(success)}</div>}
+
+      <h2>Create language</h2>
+      <form method="POST" action="/api/languages/create" class="form-card" autocomplete="off">
+        <div class="form-row">
+          <div class="form-field">
+            <label for="code">Code</label>
+            <input type="text" id="code" name="code" required
+                   placeholder="e.g. fr" pattern="[a-z]{2,5}" />
+          </div>
+          <div class="form-field">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" required placeholder="e.g. Français" maxlength="30" />
+          </div>
+        </div>
+        <button type="submit">Create language</button>
+      </form>
+
+      <h2>Registered languages</h2>
+      {allLanguages.length === 0 ? (
+        <p class="empty">No registered languages.</p>
+      ) : (
+        <div class="languages-list">
+          {allLanguages.map((lang) => (
+            <div class="lang-card">
+              <div class="lang-info">
+                <div class="lang-header">
+                  <strong>{lang.code}</strong>
+                  <span class="lang-name">{lang.name}</span>
+                  {lang.isDefault && <span class="badge default-badge">Default</span>}
+                  <span class:list={["badge", lang.enabled ? "enabled-badge" : "disabled-badge"]}>
+                    {lang.enabled ? "Enabled" : "Disabled"}
+                  </span>
+                  {lang.hasData && <span class="badge data-badge">Has data</span>}
+                </div>
+              </div>
+
+              <div class="lang-actions">
+                <form method="POST" action="/api/languages/toggle" class="inline-form">
+                  <input type="hidden" name="languageId" value={lang.id} />
+                  <button type="submit" class="action-btn">
+                    {lang.enabled ? "Disable" : "Enable"}
+                  </button>
+                </form>
+
+                <form method="POST" action="/api/languages/default" class="inline-form">
+                  <input type="hidden" name="languageId" value={lang.id} />
+                  <button type="submit" class="action-btn" disabled={!lang.enabled}>
+                    Set default
+                  </button>
+                </form>
+
+                <form method="POST" action="/api/languages/delete" class="inline-form"
+                      onsubmit="return confirm('Delete this language and all its data?')">
+                  <input type="hidden" name="languageId" value={lang.id} />
+                  <button type="submit" class="delete-btn">Delete</button>
+                </form>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  </main>
+</Layout>
+
+<style>
+  main {
+    padding: 20px 0 60px;
+  }
+
+  .admin-section {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  h1 {
+    color: var(--light-theme-primary-text);
+    font-weight: 700;
+    font-size: 2rem;
+    margin-bottom: 20px;
+  }
+
+  h2 {
+    color: var(--light-theme-primary-text);
+    font-weight: 600;
+    font-size: 1.3rem;
+    margin: 30px 0 12px;
+  }
+
+  .alert {
+    padding: 10px 14px;
+    border-radius: 5px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+
+  .alert-error {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+  }
+
+  .alert-success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+  }
+
+  .form-card {
+    background: #f8f8f8;
+    border-radius: 8px;
+    padding: 20px;
+    display: grid;
+    gap: 14px;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .form-field label {
+    color: var(--light-theme-primary-text);
+    font-weight: 500;
+    font-size: 14px;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    border: 1px solid #dadada;
+    border-radius: 5px;
+    padding: 8px 10px;
+    color: var(--light-theme-primary-text);
+    background: #fff;
+    outline: none;
+  }
+
+  input:focus {
+    border-color: var(--blue);
+  }
+
+  button {
+    border: 0;
+    border-radius: 5px;
+    font-weight: 500;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: transform 0.1s;
+    color: var(--light-theme-primary-text);
+    background: var(--blue);
+  }
+
+  button:hover {
+    transform: scale(0.98);
+  }
+
+  button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .languages-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .lang-card {
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
+    padding: 14px 18px;
+  }
+
+  .lang-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .lang-header strong {
+    color: var(--light-theme-primary-text);
+    font-size: 16px;
+    text-transform: uppercase;
+  }
+
+  .lang-name {
+    font-size: 14px;
+  }
+
+  .badge {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  .default-badge {
+    background: var(--blue);
+    color: var(--light-theme-primary-text);
+  }
+
+  .enabled-badge {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .disabled-badge {
+    background: #fee2e2;
+    color: #b91c1c;
+  }
+
+  .data-badge {
+    background: var(--light-theme-tertiary-text);
+    color: var(--light-theme-secondary-text);
+  }
+
+  .lang-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .action-btn {
+    background: transparent;
+    color: var(--light-theme-secondary-text);
+    border: 1px solid #dadada;
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+
+  .action-btn:hover {
+    background: #f5f5f5;
+  }
+
+  .delete-btn {
+    background: transparent;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+
+  .delete-btn:hover {
+    background: #fee2e2;
+  }
+
+  .inline-form {
+    display: inline;
+  }
+
+  .empty {
+    color: var(--light-theme-secondary-text);
+    padding: 20px 0;
+  }
+
+  @media (width <= 640px) {
+    .form-row {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

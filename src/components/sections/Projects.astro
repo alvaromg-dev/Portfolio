@@ -1,0 +1,35 @@
+---
+import Section from "./Section.astro"
+import ListItem from "./ListItem.astro";
+import type { PortfolioProject } from "@/lib/types";
+
+interface Props {
+  projects: PortfolioProject[];
+}
+
+const { projects } = Astro.props;
+---
+
+<Section title="Proyectos">
+  <ul>
+    {
+      projects.map(({ url, description, highlights, name }) => {
+        return (
+          <li>
+            <ListItem title={name} highlights={highlights} description={description} url={url != null ? url : undefined} />
+          </li>
+        );
+      })
+    }
+  </ul>
+</Section>
+
+<style>
+  ul {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+</style>

@@ -1,0 +1,14 @@
+---
+import Section from "./Section.astro"
+import ListItem from "./ListItem.astro"
+
+interface Props {
+  summary: string;
+}
+
+const { summary } = Astro.props;
+---
+
+<Section title="Sobre mí">
+  <ListItem description={summary} />
+</Section>
