@@ -13,3 +13,9 @@ services:
       - "${PORT:-4173}:4173"
     restart: unless-stopped
     command: ["node", "./dist/server/entry.mjs"]
+    networks:
+      - reverse-proxy
+
+networks:
+  reverse-proxy:
+    external: true
