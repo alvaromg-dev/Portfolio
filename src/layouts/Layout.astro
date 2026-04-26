@@ -21,13 +21,6 @@
     />
 
     <style>
-      :root {
-        --blue: rgb(149, 217, 210);
-        --light-theme-primary-text: #323232;
-        --light-theme-secondary-text: #646464;
-        --light-theme-tertiary-text: #eeeeee;
-      }
-
       * {
         box-sizing: border-box;
         padding: 0;
@@ -35,7 +28,7 @@
       }
 
       html {
-        background: #fff;
+        background: var(--color-surface, #fff);
       }
 
       body {
@@ -48,9 +41,9 @@
           sans-serif;
         font-size: 15px;
         font-weight: 300;
-        color: var(--light-theme-secondary-text);
+        color: var(--color-text-secondary, #646464);
         min-height: 100vh;
-        background: #fff;
+        background: var(--color-surface, #fff);
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         overflow-x: hidden;

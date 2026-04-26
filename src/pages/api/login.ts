@@ -10,7 +10,7 @@ import {
 import { trackLogin } from "../../lib/telemetry";
 import { getDb } from "../../lib/db";
 
-export const POST: APIRoute = async ({ request, cookies, redirect }) => {
+export const POST: APIRoute = async ({ request, cookies, redirect, clientAddress }) => {
   const formData = await request.formData();
   const username = (formData.get("email") as string)?.trim();
   const password = formData.get("password") as string;
@@ -27,7 +27,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const session = await authenticateUser(username, password);
   if (!session) {
     registerLoginFailure(throttleKey);
-    await trackLogin(username, null, request);
+    await trackLogin(username, null, request, clientAddress);
     return redirect("/login?error=true");
   }
 
@@ -40,7 +40,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     args: [username],
   });
   const userId = userResult.rows.length > 0 ? (userResult.rows[0].id as ArrayBuffer) : null;
-  await trackLogin(username, userId, request);
+  await trackLogin(username, userId, request, clientAddress);
 
   cookies.set("session", session.id, {
     path: "/",

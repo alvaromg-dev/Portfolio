@@ -1,9 +1,51 @@
 import { getDb, generateId, bufferToHex, toDbId } from "./db";
-import type { TelemetryVisitRow, TelemetryLoginRow, TelemetryStats } from "./types";
+import type { TelemetryVisitRow, TelemetryLoginRow, TelemetryStats, TelemetryPage } from "./types";
 
 const MAX_VISITS_PER_HOUR = 120;
 const DEDUP_VISITOR_INTERVAL = 60 * 60 * 1000; // 1 hour
 const DEDUP_IP_UA_INTERVAL = 20 * 1000; // 20 seconds
+const GEO_LOOKUP_TIMEOUT_MS = 1500;
+const GEO_BACKFILL_LIMIT = 10;
+const BOT_USER_AGENT_PATTERNS = [
+  "bot",
+  "crawler",
+  "spider",
+  "slurp",
+  "bingpreview",
+  "facebookexternalhit",
+  "whatsapp",
+  "telegrambot",
+  "discordbot",
+  "linkedinbot",
+  "twitterbot",
+  "bytespider",
+  "semrush",
+  "ahrefs",
+  "mj12bot",
+  "dotbot",
+  "petalbot",
+  "yandex",
+  "baiduspider",
+  "duckduckbot",
+  "applebot",
+  "google-inspectiontool",
+  "uptime",
+  "monitoring",
+  "headless",
+  "lighthouse",
+];
+
+type GeoLocation = {
+  country: string;
+  region: string;
+  city: string;
+};
+
+type TrackVisitOptions = {
+  path?: string;
+  query?: string;
+  source?: string;
+};
 
 function detectBrowser(ua: string): string {
   if (!ua) return "Unknown";
@@ -32,44 +74,292 @@ function detectDeviceType(ua: string): string {
   return "Desktop";
 }
 
-function extractGeoFromHeaders(headers: Headers): {
-  country: string;
-  region: string;
-  city: string;
-} {
+function isBotUserAgent(userAgent: string): boolean {
+  const ua = userAgent.toLowerCase();
+  return BOT_USER_AGENT_PATTERNS.some((pattern) => ua.includes(pattern));
+}
+
+function botFilterSql(column: string = "user_agent"): string {
+  return BOT_USER_AGENT_PATTERNS
+    .map((pattern) => `LOWER(COALESCE(${column}, '')) NOT LIKE '%${pattern}%'`)
+    .join(" AND ");
+}
+
+function cleanHeaderValue(value: string | null): string {
+  if (!value || value === "XX") return "";
+
+  try {
+    return decodeURIComponent(value).trim().substring(0, 128);
+  } catch {
+    return value.trim().substring(0, 128);
+  }
+}
+
+function extractGeoFromHeaders(headers: Headers): GeoLocation {
   return {
     country:
-      headers.get("cf-ipcountry") ||
-      headers.get("x-vercel-ip-country") ||
-      headers.get("x-appengine-country") ||
+      cleanHeaderValue(headers.get("cf-ipcountry")) ||
+      cleanHeaderValue(headers.get("x-vercel-ip-country")) ||
+      cleanHeaderValue(headers.get("x-appengine-country")) ||
       "",
     region:
-      headers.get("x-vercel-ip-country-region") ||
-      headers.get("x-appengine-region") ||
+      cleanHeaderValue(headers.get("cf-region")) ||
+      cleanHeaderValue(headers.get("cf-ipregion")) ||
+      cleanHeaderValue(headers.get("x-vercel-ip-country-region")) ||
+      cleanHeaderValue(headers.get("x-appengine-region")) ||
       "",
     city:
-      headers.get("x-vercel-ip-city") ||
-      headers.get("x-appengine-city") ||
+      cleanHeaderValue(headers.get("cf-ipcity")) ||
+      cleanHeaderValue(headers.get("x-vercel-ip-city")) ||
+      cleanHeaderValue(headers.get("x-appengine-city")) ||
       "",
   };
 }
 
-function getClientIp(headers: Headers): string {
+function isPublicIp(ipAddress: string): boolean {
+  if (!ipAddress || ipAddress === "unknown") return false;
+  if (ipAddress.includes(":")) {
+    return !(
+      ipAddress === "::1" ||
+      ipAddress.toLowerCase().startsWith("fc") ||
+      ipAddress.toLowerCase().startsWith("fd") ||
+      ipAddress.toLowerCase().startsWith("fe80:")
+    );
+  }
+
+  const parts = ipAddress.split(".").map((part) => Number(part));
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+    return false;
+  }
+
+  const [a, b] = parts;
+  return !(
+    a === 10 ||
+    a === 127 ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 169 && b === 254)
+  );
+}
+
+async function lookupGeoByIp(ipAddress: string): Promise<GeoLocation> {
+  if (!isPublicIp(ipAddress)) return { country: "", region: "", city: "" };
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), GEO_LOOKUP_TIMEOUT_MS);
+
+  try {
+    const geoJsResponse = await fetch(
+      `https://get.geojs.io/v1/ip/geo/${encodeURIComponent(ipAddress)}.json`,
+      { signal: controller.signal }
+    );
+    const geoJsData = geoJsResponse.ok ? await geoJsResponse.json() as {
+      country?: string;
+      region?: string;
+      city?: string;
+    } : {};
+
+    const geo = {
+      country: (geoJsData.country || "").substring(0, 64),
+      region: (geoJsData.region || "").substring(0, 128),
+      city: (geoJsData.city || "").substring(0, 128),
+    };
+
+    if (geo.country && geo.region && geo.city) return geo;
+
+    const ipApiResponse = await fetch(
+      `http://ip-api.com/json/${encodeURIComponent(ipAddress)}?fields=status,country,regionName,city`,
+      { signal: controller.signal }
+    );
+    if (!ipApiResponse.ok) return geo;
+
+    const ipApiData = await ipApiResponse.json() as {
+      status?: string;
+      country?: string;
+      regionName?: string;
+      city?: string;
+    };
+    if (ipApiData.status !== "success") return geo;
+
+    return {
+      country: geo.country || (ipApiData.country || "").substring(0, 64),
+      region: geo.region || (ipApiData.regionName || "").substring(0, 128),
+      city: geo.city || (ipApiData.city || "").substring(0, 128),
+    };
+  } catch {
+    return { country: "", region: "", city: "" };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function resolveGeo(headers: Headers, ipAddress: string): Promise<GeoLocation> {
+  const headerGeo = extractGeoFromHeaders(headers);
+  if (headerGeo.country && headerGeo.region && headerGeo.city) return headerGeo;
+
+  const ipGeo = await lookupGeoByIp(ipAddress);
+  return {
+    country: headerGeo.country || ipGeo.country,
+    region: headerGeo.region || ipGeo.region,
+    city: headerGeo.city || ipGeo.city,
+  };
+}
+
+function hasGeoValue(value: unknown): boolean {
+  const clean = String(value || "").trim().toLowerCase();
+  return clean !== "" && clean !== "unknown" && clean !== "null";
+}
+
+function needsGeoBackfill(row: Record<string, unknown>): boolean {
+  return !hasGeoValue(row.country) || !hasGeoValue(row.region) || !hasGeoValue(row.city);
+}
+
+function needsRowGeo(row: TelemetryVisitRow | TelemetryLoginRow): boolean {
+  return !hasGeoValue(row.country) || !hasGeoValue(row.region) || !hasGeoValue(row.city);
+}
+
+function mergeGeo(row: TelemetryVisitRow | TelemetryLoginRow, geo: GeoLocation): GeoLocation {
+  return {
+    country: hasGeoValue(row.country) ? row.country : geo.country,
+    region: hasGeoValue(row.region) ? row.region : geo.region,
+    city: hasGeoValue(row.city) ? row.city : geo.city,
+  };
+}
+
+async function hydrateVisibleRowsWithGeo(
+  table: "telemetry_visits" | "telemetry_logins",
+  rows: Array<TelemetryVisitRow | TelemetryLoginRow>
+): Promise<void> {
+  const db = getDb();
+  const geoByIp = new Map<string, Promise<GeoLocation>>();
+
+  await Promise.all(rows.map(async (row) => {
+    if (!needsRowGeo(row) || !isPublicIp(row.ipAddress)) return;
+
+    if (!geoByIp.has(row.ipAddress)) {
+      geoByIp.set(row.ipAddress, lookupGeoByIp(row.ipAddress));
+    }
+
+    const geo = await geoByIp.get(row.ipAddress)!;
+    if (!geo.country && !geo.region && !geo.city) return;
+
+    const merged = mergeGeo(row, geo);
+    row.country = merged.country;
+    row.region = merged.region;
+    row.city = merged.city;
+
+    await db.execute({
+      sql: `UPDATE ${table}
+            SET country = ?, region = ?, city = ?
+            WHERE id = ?`,
+      args: [merged.country, merged.region, merged.city, toDbId(row.id)],
+    });
+  }));
+}
+
+async function backfillTableLocations(table: "telemetry_visits" | "telemetry_logins", orderColumn: "visited_at" | "logged_at"): Promise<void> {
+  const db = getDb();
+  const result = await db.execute({
+    sql: `SELECT ip_address, country, region, city
+          FROM ${table}
+          WHERE (
+            country IS NULL OR region IS NULL OR city IS NULL OR
+            TRIM(country) = '' OR TRIM(region) = '' OR TRIM(city) = '' OR
+            LOWER(country) = 'unknown' OR LOWER(region) = 'unknown' OR LOWER(city) = 'unknown' OR
+            LOWER(country) = 'null' OR LOWER(region) = 'null' OR LOWER(city) = 'null'
+          )
+          ORDER BY ${orderColumn} DESC
+          LIMIT ?`,
+    args: [GEO_BACKFILL_LIMIT],
+  });
+
+  const rowsByIp = new Map<string, Record<string, unknown>>();
+  for (const row of result.rows) {
+    const ipAddress = String(row.ip_address || "");
+    if (isPublicIp(ipAddress) && needsGeoBackfill(row) && !rowsByIp.has(ipAddress)) {
+      rowsByIp.set(ipAddress, row);
+    }
+  }
+
+  await Promise.all(Array.from(rowsByIp).map(async ([ipAddress, row]) => {
+    const geo = await lookupGeoByIp(ipAddress);
+    if (!geo.country && !geo.region && !geo.city) return;
+
+    await db.execute({
+      sql: `UPDATE ${table}
+            SET country = CASE
+                  WHEN country IS NULL OR TRIM(country) = '' OR LOWER(country) IN ('unknown', 'null') THEN ?
+                  ELSE country
+                END,
+                region = CASE
+                  WHEN region IS NULL OR TRIM(region) = '' OR LOWER(region) IN ('unknown', 'null') THEN ?
+                  ELSE region
+                END,
+                city = CASE
+                  WHEN city IS NULL OR TRIM(city) = '' OR LOWER(city) IN ('unknown', 'null') THEN ?
+                  ELSE city
+                END
+            WHERE ip_address = ?
+              AND (
+                country IS NULL OR region IS NULL OR city IS NULL OR
+                TRIM(country) = '' OR TRIM(region) = '' OR TRIM(city) = '' OR
+                LOWER(country) = 'unknown' OR LOWER(region) = 'unknown' OR LOWER(city) = 'unknown' OR
+                LOWER(country) = 'null' OR LOWER(region) = 'null' OR LOWER(city) = 'null'
+              )`,
+      args: [
+        hasGeoValue(row.country) ? row.country : geo.country,
+        hasGeoValue(row.region) ? row.region : geo.region,
+        hasGeoValue(row.city) ? row.city : geo.city,
+        ipAddress,
+      ],
+    });
+  }));
+}
+
+export async function backfillMissingTelemetryLocations(): Promise<void> {
+  await backfillTableLocations("telemetry_visits", "visited_at");
+  await backfillTableLocations("telemetry_logins", "logged_at");
+}
+
+function getClientIp(headers: Headers, clientAddress?: string): string {
   return (
     headers.get("cf-connecting-ip") ||
     headers.get("x-real-ip") ||
     headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    clientAddress ||
     "unknown"
   );
 }
 
-export async function trackVisit(request: Request): Promise<void> {
+function cleanPath(path: unknown): string | undefined {
+  if (typeof path !== "string" || !path.startsWith("/") || path.startsWith("/api/")) {
+    return undefined;
+  }
+  return path.substring(0, 512);
+}
+
+function cleanQuery(query: unknown): string | undefined {
+  if (typeof query !== "string") return undefined;
+  return query.startsWith("?") ? query.substring(0, 1000) : "";
+}
+
+function cleanSource(source: unknown): string | undefined {
+  return typeof source === "string" ? source.substring(0, 512) : undefined;
+}
+
+export async function trackVisit(
+  request: Request,
+  clientAddress?: string,
+  options: TrackVisitOptions = {}
+): Promise<void> {
   const db = getDb();
   const headers = request.headers;
   const url = new URL(request.url);
 
-  const ipAddress = getClientIp(headers);
+  const ipAddress = getClientIp(headers, clientAddress);
   const userAgent = headers.get("user-agent") || "";
+  if (isBotUserAgent(userAgent)) return;
+
   const visitorId =
     headers.get("x-visitor-id") || `${ipAddress}-${userAgent}`.substring(0, 64);
   const now = new Date().toISOString();
@@ -107,7 +397,7 @@ export async function trackVisit(request: Request): Promise<void> {
   });
   if (recentIpUa.rows.length > 0) return;
 
-  const geo = extractGeoFromHeaders(headers);
+  const geo = await resolveGeo(headers, ipAddress);
 
   await db.execute({
     sql: `INSERT INTO telemetry_visits
@@ -125,11 +415,11 @@ export async function trackVisit(request: Request): Promise<void> {
       detectDeviceType(userAgent),
       detectOS(userAgent),
       userAgent.substring(0, 2000),
-      url.pathname,
-      url.search.substring(0, 1000),
+      cleanPath(options.path) || url.pathname,
+      cleanQuery(options.query) ?? url.search.substring(0, 1000),
       (headers.get("accept-language") || "").substring(0, 255),
       now,
-      (headers.get("referer") || "").substring(0, 512),
+      cleanSource(options.source) || (headers.get("referer") || "").substring(0, 512),
     ],
   });
 }
@@ -137,12 +427,13 @@ export async function trackVisit(request: Request): Promise<void> {
 export async function trackLogin(
   username: string,
   userId: unknown,
-  request: Request
+  request: Request,
+  clientAddress?: string
 ): Promise<void> {
   const db = getDb();
   const headers = request.headers;
-  const ipAddress = getClientIp(headers);
-  const geo = extractGeoFromHeaders(headers);
+  const ipAddress = getClientIp(headers, clientAddress);
+  const geo = await resolveGeo(headers, ipAddress);
   const now = new Date().toISOString();
 
   await db.execute({
@@ -163,16 +454,21 @@ export async function trackLogin(
 }
 
 export async function getRecentVisits(
-  limit: number = 50
+  limit: number = 50,
+  offset: number = 0,
+  since?: string
 ): Promise<TelemetryVisitRow[]> {
   const db = getDb();
+  const humanVisitFilter = botFilterSql("user_agent");
+  const dateFilter = since ? " AND visited_at > ?" : "";
   const result = await db.execute({
     sql: `SELECT id, visitor_id, ip_address, country, region, city,
                  browser, device_type, operating_system, path, visited_at
           FROM telemetry_visits
+          WHERE ${humanVisitFilter}${dateFilter}
           ORDER BY visited_at DESC
-          LIMIT ?`,
-    args: [limit],
+          LIMIT ? OFFSET ?`,
+    args: since ? [since, limit, offset] : [limit, offset],
   });
 
   return result.rows.map((r) => ({
@@ -191,15 +487,19 @@ export async function getRecentVisits(
 }
 
 export async function getRecentLogins(
-  limit: number = 50
+  limit: number = 50,
+  offset: number = 0,
+  since?: string
 ): Promise<TelemetryLoginRow[]> {
   const db = getDb();
+  const dateFilter = since ? "WHERE logged_at > ?" : "";
   const result = await db.execute({
     sql: `SELECT id, username, ip_address, country, region, city, logged_at
           FROM telemetry_logins
+          ${dateFilter}
           ORDER BY logged_at DESC
-          LIMIT ?`,
-    args: [limit],
+          LIMIT ? OFFSET ?`,
+    args: since ? [since, limit, offset] : [limit, offset],
   });
 
   return result.rows.map((r) => ({
@@ -211,6 +511,68 @@ export async function getRecentLogins(
     city: r.city as string,
     loggedAt: r.logged_at as string,
   }));
+}
+
+function normalizePage(page: number): number {
+  return Number.isInteger(page) && page > 0 ? page : 1;
+}
+
+function normalizePageSize(pageSize: number): number {
+  if (!Number.isInteger(pageSize) || pageSize < 1) return 25;
+  return Math.min(pageSize, 100);
+}
+
+export async function getVisitsPage(
+  page: number = 1,
+  pageSize: number = 25,
+  since?: string
+): Promise<TelemetryPage<TelemetryVisitRow>> {
+  const db = getDb();
+  const safePageSize = normalizePageSize(pageSize);
+  const dateFilter = since ? " AND visited_at > ?" : "";
+  const countResult = await db.execute({
+    sql: `SELECT COUNT(*) as cnt FROM telemetry_visits WHERE ${botFilterSql("user_agent")}${dateFilter}`,
+    args: since ? [since] : [],
+  });
+  const total = Number(countResult.rows[0].cnt || 0);
+  const totalPages = Math.max(1, Math.ceil(total / safePageSize));
+  const safePage = Math.min(normalizePage(page), totalPages);
+  const rows = await getRecentVisits(safePageSize, (safePage - 1) * safePageSize, since);
+  await hydrateVisibleRowsWithGeo("telemetry_visits", rows);
+
+  return {
+    rows,
+    page: safePage,
+    pageSize: safePageSize,
+    total,
+    totalPages,
+  };
+}
+
+export async function getLoginsPage(
+  page: number = 1,
+  pageSize: number = 25,
+  since?: string
+): Promise<TelemetryPage<TelemetryLoginRow>> {
+  const db = getDb();
+  const safePageSize = normalizePageSize(pageSize);
+  const countResult = await db.execute({
+    sql: `SELECT COUNT(*) as cnt FROM telemetry_logins${since ? " WHERE logged_at > ?" : ""}`,
+    args: since ? [since] : [],
+  });
+  const total = Number(countResult.rows[0].cnt || 0);
+  const totalPages = Math.max(1, Math.ceil(total / safePageSize));
+  const safePage = Math.min(normalizePage(page), totalPages);
+  const rows = await getRecentLogins(safePageSize, (safePage - 1) * safePageSize, since);
+  await hydrateVisibleRowsWithGeo("telemetry_logins", rows);
+
+  return {
+    rows,
+    page: safePage,
+    pageSize: safePageSize,
+    total,
+    totalPages,
+  };
 }
 
 export async function getVisitStats(): Promise<TelemetryStats> {
@@ -230,19 +592,19 @@ export async function getVisitStats(): Promise<TelemetryStats> {
 
   const [dayResult, weekResult, monthResult, yearResult] = await Promise.all([
     db.execute({
-      sql: "SELECT COUNT(*) as cnt FROM telemetry_visits WHERE visited_at > ?",
+      sql: `SELECT COUNT(*) as cnt FROM telemetry_visits WHERE visited_at > ? AND ${botFilterSql("user_agent")}`,
       args: [dayAgo],
     }),
     db.execute({
-      sql: "SELECT COUNT(*) as cnt FROM telemetry_visits WHERE visited_at > ?",
+      sql: `SELECT COUNT(*) as cnt FROM telemetry_visits WHERE visited_at > ? AND ${botFilterSql("user_agent")}`,
       args: [weekAgo],
     }),
     db.execute({
-      sql: "SELECT COUNT(*) as cnt FROM telemetry_visits WHERE visited_at > ?",
+      sql: `SELECT COUNT(*) as cnt FROM telemetry_visits WHERE visited_at > ? AND ${botFilterSql("user_agent")}`,
       args: [monthAgo],
     }),
     db.execute({
-      sql: "SELECT COUNT(*) as cnt FROM telemetry_visits WHERE visited_at > ?",
+      sql: `SELECT COUNT(*) as cnt FROM telemetry_visits WHERE visited_at > ? AND ${botFilterSql("user_agent")}`,
       args: [yearAgo],
     }),
   ]);
@@ -271,4 +633,16 @@ export async function deleteVisit(
   }
 
   return { success: true };
+}
+
+export async function deleteAllVisits(): Promise<{ success: boolean; deleted: number }> {
+  const db = getDb();
+  const result = await db.execute("DELETE FROM telemetry_visits");
+  return { success: true, deleted: result.rowsAffected };
+}
+
+export async function deleteAllLogins(): Promise<{ success: boolean; deleted: number }> {
+  const db = getDb();
+  const result = await db.execute("DELETE FROM telemetry_logins");
+  return { success: true, deleted: result.rowsAffected };
 }

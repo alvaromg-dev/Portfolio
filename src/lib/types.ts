@@ -103,6 +103,14 @@ export interface TelemetryStats {
   year: number;
 }
 
+export interface TelemetryPage<T> {
+  rows: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
 export interface HeaderNavOption {
   label: string;
   path: string;

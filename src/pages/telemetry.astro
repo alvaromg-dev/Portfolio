@@ -3,14 +3,24 @@ import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/Header.astro";
 import "@/styles/global.css";
 import { getAvailableLanguages } from "@/lib/portfolio";
-import { getRecentVisits, getRecentLogins, getVisitStats } from "@/lib/telemetry";
+import { backfillMissingTelemetryLocations, getVisitsPage, getLoginsPage, getVisitStats } from "@/lib/telemetry";
 import { canAdminister } from "@/lib/roles";
 import type { HeaderNavigationState } from "@/lib/types";
 
 const user = Astro.locals.user!;
 const languages = await getAvailableLanguages();
-const visits = await getRecentVisits(50);
-const logins = await getRecentLogins(50);
+const pageSize = 10;
+const validRanges = new Set(["day", "week", "month", "year"]);
+const selectedRange = Astro.url.searchParams.get("range");
+const activeRange = selectedRange && validRanges.has(selectedRange) ? selectedRange : "";
+const visitPageParam = Number(Astro.url.searchParams.get("visitPage") || "1");
+const loginPageParam = Number(Astro.url.searchParams.get("loginPage") || "1");
+const rangeStart = getRangeStart(activeRange);
+await backfillMissingTelemetryLocations();
+const visitsPage = await getVisitsPage(visitPageParam, pageSize, rangeStart);
+const loginsPage = await getLoginsPage(loginPageParam, pageSize, rangeStart);
+const visits = visitsPage.rows;
+const logins = loginsPage.rows;
 const stats = await getVisitStats();
 
 const navigation: HeaderNavigationState = {
@@ -29,20 +39,46 @@ const navigation: HeaderNavigationState = {
   currentLanguage: "es",
 };
 
-function formatDate(dateStr: string): string {
-  try {
-    const d = new Date(dateStr);
-    return d.toLocaleString("en-US", {
-      day: "2-digit", month: "2-digit", year: "numeric",
-      hour: "2-digit", minute: "2-digit",
-    });
-  } catch {
-    return dateStr;
-  }
+function formatLocation(country: string, region: string, city: string): string {
+  const clean = (value: string) => {
+    const normalized = String(value || "").trim();
+    return normalized && !["unknown", "null"].includes(normalized.toLowerCase()) ? normalized : "";
+  };
+
+  return [clean(city), clean(region), clean(country)].filter(Boolean).join(", ") || "Unknown";
 }
 
-function formatLocation(country: string, region: string, city: string): string {
-  return [city, region, country].filter(Boolean).join(", ") || "Unknown";
+function getRangeStart(range: string | null): string | undefined {
+  const now = Date.now();
+  const periods: Record<string, number> = {
+    day: 24 * 60 * 60 * 1000,
+    week: 7 * 24 * 60 * 60 * 1000,
+    month: 30 * 24 * 60 * 60 * 1000,
+    year: 365 * 24 * 60 * 60 * 1000,
+  };
+  const duration = range ? periods[range] : undefined;
+  return duration ? new Date(now - duration).toISOString() : undefined;
+}
+
+function filterHref(range: "day" | "week" | "month" | "year"): string {
+  const params = new URLSearchParams(Astro.url.searchParams);
+  params.delete("visitPage");
+  params.delete("loginPage");
+
+  if (activeRange === range) {
+    params.delete("range");
+  } else {
+    params.set("range", range);
+  }
+
+  const query = params.toString();
+  return query ? `/telemetry?${query}` : "/telemetry";
+}
+
+function paginationHref(key: "visitPage" | "loginPage", page: number): string {
+  const params = new URLSearchParams(Astro.url.searchParams);
+  params.set(key, String(page));
+  return `/telemetry?${params.toString()}`;
 }
 ---
 
@@ -53,94 +89,176 @@ function formatLocation(country: string, region: string, city: string): string {
       <h1>Telemetry</h1>
 
       <div class="stats-grid">
-        <div class="stat-card">
+        <a class:list={["stat-card", { active: activeRange === "day" }]} href={filterHref("day")} role="button" aria-pressed={activeRange === "day" ? "true" : "false"}>
           <span class="stat-value">{stats.day}</span>
           <span class="stat-label">Today</span>
-        </div>
-        <div class="stat-card">
+        </a>
+        <a class:list={["stat-card", { active: activeRange === "week" }]} href={filterHref("week")} role="button" aria-pressed={activeRange === "week" ? "true" : "false"}>
           <span class="stat-value">{stats.week}</span>
           <span class="stat-label">Week</span>
-        </div>
-        <div class="stat-card">
+        </a>
+        <a class:list={["stat-card", { active: activeRange === "month" }]} href={filterHref("month")} role="button" aria-pressed={activeRange === "month" ? "true" : "false"}>
           <span class="stat-value">{stats.month}</span>
           <span class="stat-label">Month</span>
-        </div>
-        <div class="stat-card">
+        </a>
+        <a class:list={["stat-card", { active: activeRange === "year" }]} href={filterHref("year")} role="button" aria-pressed={activeRange === "year" ? "true" : "false"}>
           <span class="stat-value">{stats.year}</span>
           <span class="stat-label">Year</span>
-        </div>
+        </a>
       </div>
 
-      <h2>Recent visits</h2>
+      <div class="section-heading">
+        <div>
+          <h2>Recent visits</h2>
+          <span>{visitsPage.total} {activeRange ? `${activeRange} total` : "total"}</span>
+        </div>
+        <button class="table-action danger" data-delete-table="visits" disabled={visitsPage.total === 0}>
+          Delete visits
+        </button>
+      </div>
       {visits.length === 0 ? (
         <p class="empty">No visits recorded.</p>
       ) : (
-        <div class="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>Device</th>
-                <th>Location</th>
-                <th>Browser</th>
-                <th>Type</th>
-                <th>Date</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {visits.map((v) => (
+        <>
+          <div class="table-wrapper">
+            <table>
+              <thead>
                 <tr>
-                  <td>{v.operatingSystem}</td>
-                  <td>{formatLocation(v.country, v.region, v.city)}</td>
-                  <td>{v.browser}</td>
-                  <td>{v.deviceType}</td>
-                  <td>{formatDate(v.visitedAt)}</td>
-                  <td>
-                    <button class="delete-btn" data-id={v.id} title="Eliminar">✕</button>
-                  </td>
+                  <th>Device</th>
+                  <th>Location</th>
+                  <th>Browser</th>
+                  <th>Type</th>
+                  <th>Date</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {visits.map((v) => (
+                  <tr>
+                    <td>{v.operatingSystem}</td>
+                    <td>{formatLocation(v.country, v.region, v.city)}</td>
+                    <td>{v.browser}</td>
+                    <td>{v.deviceType}</td>
+                    <td><time data-local-date datetime={v.visitedAt}>{v.visitedAt}</time></td>
+                    <td>
+                      <button class="delete-btn" data-id={v.id} title="Eliminar">✕</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <nav class="pagination" aria-label="Visits pagination">
+            <a
+              class:list={["page-link", { disabled: visitsPage.page <= 1 }]}
+              href={paginationHref("visitPage", visitsPage.page - 1)}
+              aria-disabled={visitsPage.page <= 1 ? "true" : "false"}
+            >
+              Previous
+            </a>
+            <span>Page {visitsPage.page} of {visitsPage.totalPages}</span>
+            <a
+              class:list={["page-link", { disabled: visitsPage.page >= visitsPage.totalPages }]}
+              href={paginationHref("visitPage", visitsPage.page + 1)}
+              aria-disabled={visitsPage.page >= visitsPage.totalPages ? "true" : "false"}
+            >
+              Next
+            </a>
+          </nav>
+        </>
       )}
 
-      <h2>Recent logins</h2>
+      <div class="section-heading">
+        <div>
+          <h2>Recent logins</h2>
+          <span>{loginsPage.total} {activeRange ? `${activeRange} total` : "total"}</span>
+        </div>
+        <button class="table-action danger" data-delete-table="logins" disabled={loginsPage.total === 0}>
+          Delete logins
+        </button>
+      </div>
       {logins.length === 0 ? (
         <p class="empty">No logins recorded.</p>
       ) : (
-        <div class="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>User</th>
-                <th>Location</th>
-                <th>IP</th>
-                <th>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {logins.map((l) => (
+        <>
+          <div class="table-wrapper">
+            <table>
+              <thead>
                 <tr>
-                  <td>{l.username}</td>
-                  <td>{formatLocation(l.country, l.region, l.city)}</td>
-                  <td>{l.ipAddress}</td>
-                  <td>{formatDate(l.loggedAt)}</td>
+                  <th>User</th>
+                  <th>Location</th>
+                  <th>IP</th>
+                  <th>Date</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {logins.map((l) => (
+                  <tr>
+                    <td>{l.username}</td>
+                    <td>{formatLocation(l.country, l.region, l.city)}</td>
+                    <td>{l.ipAddress}</td>
+                    <td><time data-local-date datetime={l.loggedAt}>{l.loggedAt}</time></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <nav class="pagination" aria-label="Logins pagination">
+            <a
+              class:list={["page-link", { disabled: loginsPage.page <= 1 }]}
+              href={paginationHref("loginPage", loginsPage.page - 1)}
+              aria-disabled={loginsPage.page <= 1 ? "true" : "false"}
+            >
+              Previous
+            </a>
+            <span>Page {loginsPage.page} of {loginsPage.totalPages}</span>
+            <a
+              class:list={["page-link", { disabled: loginsPage.page >= loginsPage.totalPages }]}
+              href={paginationHref("loginPage", loginsPage.page + 1)}
+              aria-disabled={loginsPage.page >= loginsPage.totalPages ? "true" : "false"}
+            >
+              Next
+            </a>
+          </nav>
+        </>
       )}
     </section>
   </main>
 </Layout>
 
 <script>
+  import { confirmDialog } from "@/lib/confirmDialog";
+
+  const dateFormatter = new Intl.DateTimeFormat(navigator.language || "en-US", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
+
+  document.querySelectorAll("time[data-local-date]").forEach((node) => {
+    const time = node as HTMLTimeElement;
+    const value = time.dateTime || time.textContent || "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return;
+    time.textContent = dateFormatter.format(date);
+    time.title = value;
+  });
+
   document.querySelectorAll(".delete-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const visitId = (btn as HTMLElement).dataset.id;
-      if (!visitId || !confirm("Delete this visit?")) return;
+      if (!visitId) return;
+
+      const confirmed = await confirmDialog({
+        title: "Delete visit",
+        message: "This telemetry visit will be permanently deleted.",
+        confirmLabel: "Delete",
+        cancelLabel: "Cancel",
+      });
+      if (!confirmed) return;
 
       const res = await fetch("/api/telemetry/delete", {
         method: "POST",
@@ -150,6 +268,31 @@ function formatLocation(country: string, region: string, city: string): string {
 
       if (res.ok) {
         (btn as HTMLElement).closest("tr")?.remove();
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-delete-table]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const table = (btn as HTMLButtonElement).dataset.deleteTable;
+      if (table !== "visits" && table !== "logins") return;
+
+      const confirmed = await confirmDialog({
+        title: table === "visits" ? "Delete all visits" : "Delete all logins",
+        message: `This will permanently delete every telemetry ${table === "visits" ? "visit" : "login"} record. This action cannot be undone.`,
+        confirmLabel: "Delete all",
+        cancelLabel: "Cancel",
+      });
+      if (!confirmed) return;
+
+      const res = await fetch("/api/telemetry/delete-all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ table }),
+      });
+
+      if (res.ok) {
+        window.location.href = "/telemetry";
       }
     });
   });
@@ -167,17 +310,31 @@ function formatLocation(country: string, region: string, city: string): string {
   }
 
   h1 {
-    color: var(--light-theme-primary-text);
+    color: var(--color-text-primary);
     font-weight: 700;
     font-size: 2rem;
     margin-bottom: 20px;
   }
 
   h2 {
-    color: var(--light-theme-primary-text);
+    color: var(--color-text-primary);
     font-weight: 600;
     font-size: 1.3rem;
+    margin: 0;
+  }
+
+  .section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
     margin: 30px 0 12px;
+  }
+
+  .section-heading span {
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    white-space: nowrap;
   }
 
   .stats-grid {
@@ -188,29 +345,48 @@ function formatLocation(country: string, region: string, city: string): string {
   }
 
   .stat-card {
-    background: #f8f8f8;
+    background: var(--color-surface-muted);
+    border: 1px solid transparent;
     border-radius: 8px;
     padding: 16px;
     text-align: center;
     display: flex;
     flex-direction: column;
     gap: 4px;
+    text-decoration: none;
+    transition: background 0.15s, border-color 0.15s, transform 0.15s;
+  }
+
+  .stat-card:hover {
+    background: var(--color-brand-soft);
+    border-color: var(--color-brand-border);
+  }
+
+  .stat-card.active {
+    background: var(--color-brand-soft);
+    border-color: var(--color-brand-strong);
+    box-shadow: inset 0 0 0 1px var(--color-brand-strong);
+  }
+
+  .stat-card.active .stat-value,
+  .stat-card.active .stat-label {
+    color: var(--color-brand-strong);
   }
 
   .stat-value {
     font-size: 1.8rem;
     font-weight: 700;
-    color: var(--light-theme-primary-text);
+    color: var(--color-text-primary);
   }
 
   .stat-label {
     font-size: 13px;
-    color: var(--light-theme-secondary-text);
+    color: var(--color-text-secondary);
   }
 
   .table-wrapper {
     overflow-x: auto;
-    border: 1px solid #f0f0f0;
+    border: 1px solid var(--color-border-subtle);
     border-radius: 8px;
   }
 
@@ -222,13 +398,13 @@ function formatLocation(country: string, region: string, city: string): string {
   th, td {
     padding: 10px 14px;
     text-align: left;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--color-border-subtle);
     white-space: nowrap;
   }
 
   th {
-    background: #f8f8f8;
-    color: var(--light-theme-primary-text);
+    background: var(--color-surface-muted);
+    color: var(--color-text-primary);
     font-weight: 600;
     font-size: 13px;
   }
@@ -240,7 +416,7 @@ function formatLocation(country: string, region: string, city: string): string {
   .delete-btn {
     background: transparent;
     border: none;
-    color: #aaa;
+    color: var(--color-text-muted);
     cursor: pointer;
     padding: 4px 8px;
     border-radius: 4px;
@@ -248,18 +424,68 @@ function formatLocation(country: string, region: string, city: string): string {
   }
 
   .delete-btn:hover {
-    background: #fee2e2;
-    color: #b91c1c;
+    background: var(--color-danger-bg);
+    color: var(--color-danger);
   }
 
   .empty {
-    color: var(--light-theme-secondary-text);
+    color: var(--color-text-secondary);
     padding: 20px 0;
+  }
+
+  .table-action {
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    padding: 7px 10px;
+  }
+
+  .table-action.danger {
+    background: var(--color-danger-bg);
+    border-color: var(--color-danger-border);
+    color: var(--color-danger);
+  }
+
+  .table-action:disabled {
+    cursor: default;
+    opacity: 0.45;
+  }
+
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 12px;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+  }
+
+  .page-link {
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    color: var(--color-text-primary);
+    padding: 6px 10px;
+    text-decoration: none;
+  }
+
+  .page-link:hover {
+    background: var(--color-surface-muted);
+  }
+
+  .page-link.disabled {
+    color: var(--color-text-muted);
+    pointer-events: none;
   }
 
   @media (width <= 640px) {
     .stats-grid {
       grid-template-columns: repeat(2, 1fr);
+    }
+
+    .pagination {
+      justify-content: space-between;
     }
   }
 </style>

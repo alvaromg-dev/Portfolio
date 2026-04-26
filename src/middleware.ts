@@ -46,6 +46,7 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
   const isApiProtected =
     path.startsWith("/api/portfolio") ||
     path.startsWith("/api/telemetry/delete") ||
+    path.startsWith("/api/telemetry/delete-all") ||
     path.startsWith("/api/users") ||
     path.startsWith("/api/languages");
 

@@ -1,6 +1,30 @@
 // @ts-check
 import { defineConfig } from "astro/config";
 import node from "@astrojs/node";
+import { config as loadEnv } from "dotenv";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+
+function getModeFromArgs() {
+    const modeIndex = process.argv.indexOf("--mode");
+    if (modeIndex >= 0 && process.argv[modeIndex + 1]) {
+        return process.argv[modeIndex + 1];
+    }
+
+    const modeArg = process.argv.find((arg) => arg.startsWith("--mode="));
+    return modeArg?.split("=")[1] || "dev";
+}
+
+function loadProfileEnv(mode = getModeFromArgs()) {
+    const profile = ["dev", "pre", "pro"].includes(mode) ? mode : "dev";
+    const envFile = resolve(process.cwd(), `.env.${profile}`);
+
+    if (existsSync(envFile)) {
+        loadEnv({ path: envFile, override: true, quiet: true });
+    }
+}
+
+loadProfileEnv();
 
 const allowedHosts = (process.env.ALLOWED_HOSTS || "localhost,127.0.0.1,alvaromg.com,www.alvaromg.com")
     .split(",")

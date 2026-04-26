@@ -1,3 +1,5 @@
+@import "./tokens.css";
+
 @font-face {
   font-family: "Onest";
   src: url("/Onest-VariableFont_wght.woff2") format("woff2");
@@ -19,17 +21,67 @@
   font-family: "Onest", Times, serif;
   font-size: 15px;
   font-weight: 300;
-  color: var(--light-theme-secondary-text);
+  color: var(--color-text-secondary);
   box-sizing: border-box;
   padding: 0;
   margin: 0;
 }
 
-:root {
-  --blue: rgb(149, 217, 210);
-  --light-theme-primary-text: #323232; /*323232*/
-  --light-theme-secondary-text: #646464; /*646464*/
-  --light-theme-tertiary-text: #eeeeee; /*eeeeee*/
+.confirm-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: var(--color-backdrop);
+}
+
+.confirm-dialog {
+  width: min(420px, 100%);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-dialog);
+  padding: 20px;
+}
+
+.confirm-dialog h2 {
+  color: var(--color-text-primary);
+  font-size: 1.15rem;
+  font-weight: 650;
+  margin-bottom: 8px;
+}
+
+.confirm-dialog p {
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+  margin-bottom: 18px;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.confirm-dialog-actions button {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  padding: 8px 12px;
+}
+
+.confirm-dialog-cancel {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.confirm-dialog-confirm {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: var(--color-text-inverse);
 }
 
 /* Animations */

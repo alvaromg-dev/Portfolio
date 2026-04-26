@@ -4,7 +4,6 @@ import Layout from "../layouts/Layout.astro";
 import Header from "@/components/Header.astro";
 import "../styles/global.css";
 import { getPortfolioData, getAvailableLanguages, resolveLanguageCode } from "@/lib/portfolio";
-import { trackVisit } from "@/lib/telemetry";
 import { canAdminister, canEditPortfolio } from "@/lib/roles";
 import type { HeaderNavigationState } from "@/lib/types";
 
@@ -33,13 +32,50 @@ const navigation: HeaderNavigationState = {
   currentLanguage: langCode,
 };
 
-// Track visit (fire-and-forget)
-try {
-  await trackVisit(Astro.request);
-} catch { /* telemetry should never break the page */ }
 ---
 
 <Layout>
   <Header navigation={navigation} currentPath="/" />
   <Portfolio data={data} canEdit={isEditor} langCode={langCode} />
 </Layout>
+
+<script>
+  (async () => {
+    try {
+      if (navigator.webdriver === true || document.visibilityState === "prerender") return;
+
+      const challengeResponse = await fetch("/api/telemetry/challenge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      if (!challengeResponse.ok) return;
+
+      const { token } = await challengeResponse.json();
+      if (!token) return;
+
+      await new Promise((resolve) => window.setTimeout(resolve, 1200));
+
+      await fetch("/api/telemetry/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+        body: JSON.stringify({
+          token,
+          path: window.location.pathname,
+          query: window.location.search,
+          source: document.referrer,
+          signals: {
+            language: navigator.language,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            screen: `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`,
+            visibilityState: document.visibilityState,
+            webdriver: navigator.webdriver === true,
+          },
+        }),
+      });
+    } catch {
+      // Telemetry should never affect the page.
+    }
+  })();
+</script>

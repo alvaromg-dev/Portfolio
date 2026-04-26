@@ -8,5 +8,5 @@ export const POST: APIRoute = async ({ cookies, redirect }) => {
   }
 
   cookies.delete("session", { path: "/" });
-  return redirect("/login?logout=true");
+  return redirect("/");
 };
