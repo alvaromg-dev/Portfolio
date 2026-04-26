@@ -6,6 +6,7 @@ const DEDUP_VISITOR_INTERVAL = 60 * 60 * 1000; // 1 hour
 const DEDUP_IP_UA_INTERVAL = 20 * 1000; // 20 seconds
 const GEO_LOOKUP_TIMEOUT_MS = 1500;
 const GEO_BACKFILL_LIMIT = 10;
+const GEO_BACKFILL_SCAN_LIMIT = 100;
 const BOT_USER_AGENT_PATTERNS = [
   "bot",
   "crawler",
@@ -40,6 +41,9 @@ type GeoLocation = {
   region: string;
   city: string;
 };
+
+const LOCALHOST_GEO: GeoLocation = { country: "localhost", region: "", city: "" };
+type TelemetryTable = "telemetry_visits" | "telemetry_logins";
 
 type TrackVisitOptions = {
   path?: string;
@@ -104,8 +108,8 @@ function normalizeGeo(geo: GeoLocation): GeoLocation {
   };
 }
 
-function hasCompleteGeo(geo: GeoLocation): boolean {
-  return hasGeoValue(geo.country) && hasGeoValue(geo.region) && hasGeoValue(geo.city);
+function hasAnyGeo(geo: GeoLocation): boolean {
+  return hasGeoValue(geo.country) || hasGeoValue(geo.region) || hasGeoValue(geo.city);
 }
 
 function cleanHeaderValue(value: string | null): string {
@@ -139,18 +143,34 @@ function extractGeoFromHeaders(headers: Headers): GeoLocation {
   };
 }
 
+function normalizeIpAddress(ipAddress: string): string {
+  const cleanIp = ipAddress.trim().toLowerCase();
+  return cleanIp.startsWith("::ffff:") ? cleanIp.substring("::ffff:".length) : cleanIp;
+}
+
+function ipAddressVariants(ipAddress: string): string[] {
+  const cleanIp = ipAddress.trim().toLowerCase();
+  const normalizedIp = normalizeIpAddress(cleanIp);
+  const variants = [cleanIp, normalizedIp];
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(normalizedIp)) {
+    variants.push(`::ffff:${normalizedIp}`);
+  }
+  return Array.from(new Set(variants.filter(Boolean)));
+}
+
 function isPublicIp(ipAddress: string): boolean {
-  if (!ipAddress || ipAddress === "unknown") return false;
-  if (ipAddress.includes(":")) {
+  const cleanIp = normalizeIpAddress(ipAddress);
+  if (!cleanIp || cleanIp === "unknown") return false;
+  if (cleanIp.includes(":")) {
     return !(
-      ipAddress === "::1" ||
-      ipAddress.toLowerCase().startsWith("fc") ||
-      ipAddress.toLowerCase().startsWith("fd") ||
-      ipAddress.toLowerCase().startsWith("fe80:")
+      cleanIp === "::1" ||
+      cleanIp.startsWith("fc") ||
+      cleanIp.startsWith("fd") ||
+      cleanIp.startsWith("fe80:")
     );
   }
 
-  const parts = ipAddress.split(".").map((part) => Number(part));
+  const parts = cleanIp.split(".").map((part) => Number(part));
   if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
     return false;
   }
@@ -165,104 +185,143 @@ function isPublicIp(ipAddress: string): boolean {
   );
 }
 
-async function lookupGeoByIp(ipAddress: string): Promise<GeoLocation> {
-  if (!isPublicIp(ipAddress)) return { country: "", region: "", city: "" };
+function isLocalhostIp(ipAddress: string): boolean {
+  const cleanIp = normalizeIpAddress(ipAddress);
+  return cleanIp === "127.0.0.1" || cleanIp === "::1";
+}
 
+async function fetchJsonWithTimeout<T>(url: string, init: RequestInit = {}): Promise<T | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), GEO_LOOKUP_TIMEOUT_MS);
 
   try {
-    const ipInfoToken = process.env.IPINFO_TOKEN;
-    const ipInfoResponse = await fetch(
-      `https://ipinfo.io/${encodeURIComponent(ipAddress)}/json${ipInfoToken ? `?token=${encodeURIComponent(ipInfoToken)}` : ""}`,
-      {
-        signal: controller.signal,
-        headers: { "User-Agent": "Mozilla/5.0" },
-      }
-    );
-    if (ipInfoResponse.ok) {
-      const ipInfoData = await ipInfoResponse.json() as {
-        country?: string;
-        region?: string;
-        city?: string;
-      };
-      const ipInfoGeo = normalizeGeo({
-        country: ipInfoData.country || "",
-        region: ipInfoData.region || "",
-        city: ipInfoData.city || "",
-      });
-      if (hasCompleteGeo(ipInfoGeo)) return ipInfoGeo;
-    }
-
-    const ipApiIsResponse = await fetch(
-      `https://api.ipapi.is/?q=${encodeURIComponent(ipAddress)}`,
-      { signal: controller.signal }
-    );
-    if (ipApiIsResponse.ok) {
-      const ipApiIsData = await ipApiIsResponse.json() as {
-        location?: {
-          country?: string;
-          state?: string;
-          city?: string;
-        };
-      };
-      const ipApiIsGeo = normalizeGeo({
-        country: ipApiIsData.location?.country || "",
-        region: ipApiIsData.location?.state || "",
-        city: ipApiIsData.location?.city || "",
-      });
-      if (hasCompleteGeo(ipApiIsGeo)) return ipApiIsGeo;
-    }
-
-    const geoJsResponse = await fetch(
-      `https://get.geojs.io/v1/ip/geo/${encodeURIComponent(ipAddress)}.json`,
-      { signal: controller.signal }
-    );
-    const geoJsData = geoJsResponse.ok ? await geoJsResponse.json() as {
-      country?: string;
-      region?: string;
-      city?: string;
-    } : {};
-
-    const geo = normalizeGeo({
-      country: (geoJsData.country || "").substring(0, 64),
-      region: (geoJsData.region || "").substring(0, 128),
-      city: (geoJsData.city || "").substring(0, 128),
-    });
-
-    if (geo.country && geo.region && geo.city) return geo;
-
-    const ipApiResponse = await fetch(
-      `http://ip-api.com/json/${encodeURIComponent(ipAddress)}?fields=status,country,regionName,city`,
-      { signal: controller.signal }
-    );
-    if (!ipApiResponse.ok) return geo;
-
-    const ipApiData = await ipApiResponse.json() as {
-      status?: string;
-      country?: string;
-      regionName?: string;
-      city?: string;
-    };
-    if (ipApiData.status !== "success") return geo;
-
-    return normalizeGeo({
-      country: geo.country || (ipApiData.country || "").substring(0, 64),
-      region: geo.region || (ipApiData.regionName || "").substring(0, 128),
-      city: geo.city || (ipApiData.city || "").substring(0, 128),
-    });
+    const response = await fetch(url, { ...init, signal: controller.signal });
+    return response.ok ? await response.json() as T : null;
   } catch {
-    return { country: "", region: "", city: "" };
+    return null;
   } finally {
     clearTimeout(timeout);
   }
 }
 
+async function lookupStoredLocationByIp(ipAddress: string): Promise<GeoLocation> {
+  const db = getDb();
+  const ipVariants = ipAddressVariants(ipAddress);
+  const result = await db.execute({
+    sql: `SELECT country, region, city, at
+          FROM (
+            SELECT country, region, city, visited_at AS at
+            FROM telemetry_visits
+            WHERE ip_address = ANY(?)
+              AND country IS NOT NULL AND region IS NOT NULL AND city IS NOT NULL
+              AND TRIM(country) <> '' AND TRIM(region) <> '' AND TRIM(city) <> ''
+              AND LOWER(country) NOT IN ('unknown', 'null')
+              AND LOWER(region) NOT IN ('unknown', 'null')
+              AND LOWER(city) NOT IN ('unknown', 'null')
+            UNION ALL
+            SELECT country, region, city, logged_at AS at
+            FROM telemetry_logins
+            WHERE ip_address = ANY(?)
+              AND country IS NOT NULL AND region IS NOT NULL AND city IS NOT NULL
+              AND TRIM(country) <> '' AND TRIM(region) <> '' AND TRIM(city) <> ''
+              AND LOWER(country) NOT IN ('unknown', 'null')
+              AND LOWER(region) NOT IN ('unknown', 'null')
+              AND LOWER(city) NOT IN ('unknown', 'null')
+          ) known_locations
+          ORDER BY at DESC
+          LIMIT 1`,
+    args: [ipVariants, ipVariants],
+  });
+
+  const row = result.rows[0];
+  return row ? normalizeGeo({
+    country: String(row.country || ""),
+    region: String(row.region || ""),
+    city: String(row.city || ""),
+  }) : { country: "", region: "", city: "" };
+}
+
+export async function resolveLocationByIp(ipAddress: string): Promise<GeoLocation> {
+  const lookupIp = normalizeIpAddress(ipAddress);
+  if (isLocalhostIp(lookupIp)) return LOCALHOST_GEO;
+  if (!isPublicIp(lookupIp)) return { country: "", region: "", city: "" };
+
+  const storedGeo = await lookupStoredLocationByIp(ipAddress);
+  if (hasAnyGeo(storedGeo)) return storedGeo;
+
+  const ipInfoToken = process.env.IPINFO_TOKEN;
+  const ipInfoData = await fetchJsonWithTimeout<{
+    country?: string;
+    region?: string;
+    city?: string;
+  }>(
+    `https://ipinfo.io/${encodeURIComponent(lookupIp)}/json${ipInfoToken ? `?token=${encodeURIComponent(ipInfoToken)}` : ""}`,
+    { headers: { "User-Agent": "Mozilla/5.0" } }
+  );
+  if (ipInfoData) {
+    const ipInfoGeo = normalizeGeo({
+      country: ipInfoData.country || "",
+      region: ipInfoData.region || "",
+      city: ipInfoData.city || "",
+    });
+    if (hasAnyGeo(ipInfoGeo)) return ipInfoGeo;
+  }
+
+  const ipApiIsData = await fetchJsonWithTimeout<{
+    location?: {
+      country?: string;
+      state?: string;
+      city?: string;
+    };
+  }>(`https://api.ipapi.is/?q=${encodeURIComponent(lookupIp)}`);
+  if (ipApiIsData) {
+    const ipApiIsGeo = normalizeGeo({
+      country: ipApiIsData.location?.country || "",
+      region: ipApiIsData.location?.state || "",
+      city: ipApiIsData.location?.city || "",
+    });
+    if (hasAnyGeo(ipApiIsGeo)) return ipApiIsGeo;
+  }
+
+  const geoJsData = await fetchJsonWithTimeout<{
+    country?: string;
+    region?: string;
+    city?: string;
+  }>(`https://get.geojs.io/v1/ip/geo/${encodeURIComponent(lookupIp)}.json`);
+  if (geoJsData) {
+    const geoJsGeo = normalizeGeo({
+      country: geoJsData.country || "",
+      region: geoJsData.region || "",
+      city: geoJsData.city || "",
+    });
+    if (hasAnyGeo(geoJsGeo)) return geoJsGeo;
+  }
+
+  const ipApiData = await fetchJsonWithTimeout<{
+    status?: string;
+    country?: string;
+    regionName?: string;
+    city?: string;
+  }>(`http://ip-api.com/json/${encodeURIComponent(lookupIp)}?fields=status,country,regionName,city`);
+  if (ipApiData?.status === "success") {
+    const ipApiGeo = normalizeGeo({
+      country: ipApiData.country || "",
+      region: ipApiData.regionName || "",
+      city: ipApiData.city || "",
+    });
+    if (hasAnyGeo(ipApiGeo)) return ipApiGeo;
+  }
+
+  return { country: "", region: "", city: "" };
+}
+
 async function resolveGeo(headers: Headers, ipAddress: string): Promise<GeoLocation> {
+  if (isLocalhostIp(ipAddress)) return LOCALHOST_GEO;
+
   const headerGeo = extractGeoFromHeaders(headers);
   if (headerGeo.country && headerGeo.region && headerGeo.city) return headerGeo;
 
-  const ipGeo = await lookupGeoByIp(ipAddress);
+  const ipGeo = await resolveLocationByIp(ipAddress);
   return {
     country: headerGeo.country || ipGeo.country,
     region: headerGeo.region || ipGeo.region,
@@ -279,7 +338,7 @@ function needsGeoBackfill(row: Record<string, unknown>): boolean {
   return !hasGeoValue(row.country) || !hasGeoValue(row.region) || !hasGeoValue(row.city);
 }
 
-function needsRowGeo(row: TelemetryVisitRow | TelemetryLoginRow): boolean {
+function needsRowLocation(row: TelemetryVisitRow | TelemetryLoginRow): boolean {
   return !hasGeoValue(row.country) || !hasGeoValue(row.region) || !hasGeoValue(row.city);
 }
 
@@ -291,24 +350,54 @@ function mergeGeo(row: TelemetryVisitRow | TelemetryLoginRow, geo: GeoLocation):
   };
 }
 
-async function hydrateVisibleRowsWithGeo(
-  table: "telemetry_visits" | "telemetry_logins",
+async function updateLocationForIp(table: TelemetryTable, ipAddress: string, geo: GeoLocation): Promise<void> {
+  const db = getDb();
+  const ipVariants = ipAddressVariants(ipAddress);
+  await db.execute({
+    sql: `UPDATE ${table}
+          SET country = CASE
+                WHEN country IS NULL OR TRIM(country) = '' OR LOWER(country) IN ('unknown', 'null') THEN ?
+                ELSE country
+              END,
+              region = CASE
+                WHEN region IS NULL OR TRIM(region) = '' OR LOWER(region) IN ('unknown', 'null') THEN ?
+                ELSE region
+              END,
+              city = CASE
+                WHEN city IS NULL OR TRIM(city) = '' OR LOWER(city) IN ('unknown', 'null') THEN ?
+                ELSE city
+              END
+          WHERE ip_address = ANY(?)
+            AND (
+              country IS NULL OR region IS NULL OR city IS NULL OR
+              TRIM(country) = '' OR TRIM(region) = '' OR TRIM(city) = '' OR
+              LOWER(country) = 'unknown' OR LOWER(region) = 'unknown' OR LOWER(city) = 'unknown' OR
+              LOWER(country) = 'null' OR LOWER(region) = 'null' OR LOWER(city) = 'null'
+            )`,
+    args: [geo.country, geo.region, geo.city, ipVariants],
+  });
+}
+
+async function reprocessMissingLocationsForRows(
+  table: TelemetryTable,
   rows: Array<TelemetryVisitRow | TelemetryLoginRow>
 ): Promise<void> {
-  const db = getDb();
   const geoByIp = new Map<string, Promise<GeoLocation>>();
 
   await Promise.all(rows.map(async (row) => {
-    if (!isPublicIp(row.ipAddress)) return;
+    if (!needsRowLocation(row)) return;
 
-    if (!geoByIp.has(row.ipAddress)) {
-      geoByIp.set(row.ipAddress, lookupGeoByIp(row.ipAddress));
+    const ipAddress = row.ipAddress;
+    if (!isLocalhostIp(ipAddress) && !isPublicIp(ipAddress)) return;
+
+    if (!geoByIp.has(ipAddress)) {
+      geoByIp.set(ipAddress, resolveLocationByIp(ipAddress));
     }
 
-    const geo = await geoByIp.get(row.ipAddress)!;
-    if (!geo.country && !geo.region && !geo.city) return;
+    const geo = await geoByIp.get(ipAddress)!;
+    if (!hasAnyGeo(geo)) return;
 
-    const merged = needsRowGeo(row) ? mergeGeo(row, geo) : geo;
+    const merged = mergeGeo(row, geo);
     if (
       row.country === merged.country &&
       row.region === merged.region &&
@@ -321,16 +410,11 @@ async function hydrateVisibleRowsWithGeo(
     row.region = merged.region;
     row.city = merged.city;
 
-    await db.execute({
-      sql: `UPDATE ${table}
-            SET country = ?, region = ?, city = ?
-            WHERE id = ?`,
-      args: [merged.country, merged.region, merged.city, toDbId(row.id)],
-    });
+    await updateLocationForIp(table, ipAddress, geo);
   }));
 }
 
-async function backfillTableLocations(table: "telemetry_visits" | "telemetry_logins", orderColumn: "visited_at" | "logged_at"): Promise<void> {
+async function backfillTableLocations(table: TelemetryTable, orderColumn: "visited_at" | "logged_at"): Promise<void> {
   const db = getDb();
   const result = await db.execute({
     sql: `SELECT ip_address, country, region, city
@@ -343,48 +427,33 @@ async function backfillTableLocations(table: "telemetry_visits" | "telemetry_log
           )
           ORDER BY ${orderColumn} DESC
           LIMIT ?`,
-    args: [GEO_BACKFILL_LIMIT],
+    args: [GEO_BACKFILL_SCAN_LIMIT],
   });
 
   const rowsByIp = new Map<string, Record<string, unknown>>();
   for (const row of result.rows) {
+    if (rowsByIp.size >= GEO_BACKFILL_LIMIT) break;
+
     const ipAddress = String(row.ip_address || "");
+    if (isLocalhostIp(ipAddress)) {
+      if (row.country !== LOCALHOST_GEO.country && !rowsByIp.has(ipAddress)) {
+        rowsByIp.set(ipAddress, row);
+      }
+      continue;
+    }
+
     if (isPublicIp(ipAddress) && needsGeoBackfill(row) && !rowsByIp.has(ipAddress)) {
       rowsByIp.set(ipAddress, row);
     }
   }
 
   await Promise.all(Array.from(rowsByIp).map(async ([ipAddress, row]) => {
-    const geo = await lookupGeoByIp(ipAddress);
-    if (!geo.country && !geo.region && !geo.city) return;
-
-    await db.execute({
-      sql: `UPDATE ${table}
-            SET country = CASE
-                  WHEN country IS NULL OR TRIM(country) = '' OR LOWER(country) IN ('unknown', 'null') THEN ?
-                  ELSE country
-                END,
-                region = CASE
-                  WHEN region IS NULL OR TRIM(region) = '' OR LOWER(region) IN ('unknown', 'null') THEN ?
-                  ELSE region
-                END,
-                city = CASE
-                  WHEN city IS NULL OR TRIM(city) = '' OR LOWER(city) IN ('unknown', 'null') THEN ?
-                  ELSE city
-                END
-            WHERE ip_address = ?
-              AND (
-                country IS NULL OR region IS NULL OR city IS NULL OR
-                TRIM(country) = '' OR TRIM(region) = '' OR TRIM(city) = '' OR
-                LOWER(country) = 'unknown' OR LOWER(region) = 'unknown' OR LOWER(city) = 'unknown' OR
-                LOWER(country) = 'null' OR LOWER(region) = 'null' OR LOWER(city) = 'null'
-              )`,
-      args: [
-        hasGeoValue(row.country) ? row.country : geo.country,
-        hasGeoValue(row.region) ? row.region : geo.region,
-        hasGeoValue(row.city) ? row.city : geo.city,
-        ipAddress,
-      ],
+    const geo = await resolveLocationByIp(ipAddress);
+    if (!hasAnyGeo(geo)) return;
+    await updateLocationForIp(table, ipAddress, {
+      country: hasGeoValue(row.country) ? String(row.country) : geo.country,
+      region: hasGeoValue(row.region) ? String(row.region) : geo.region,
+      city: hasGeoValue(row.city) ? String(row.city) : geo.city,
     });
   }));
 }
@@ -611,7 +680,7 @@ export async function getVisitsPage(
   const totalPages = Math.max(1, Math.ceil(total / safePageSize));
   const safePage = Math.min(normalizePage(page), totalPages);
   const rows = await getRecentVisits(safePageSize, (safePage - 1) * safePageSize, since);
-  await hydrateVisibleRowsWithGeo("telemetry_visits", rows);
+  await reprocessMissingLocationsForRows("telemetry_visits", rows);
 
   return {
     rows,
@@ -637,7 +706,7 @@ export async function getLoginsPage(
   const totalPages = Math.max(1, Math.ceil(total / safePageSize));
   const safePage = Math.min(normalizePage(page), totalPages);
   const rows = await getRecentLogins(safePageSize, (safePage - 1) * safePageSize, since);
-  await hydrateVisibleRowsWithGeo("telemetry_logins", rows);
+  await reprocessMissingLocationsForRows("telemetry_logins", rows);
 
   return {
     rows,

@@ -125,9 +125,9 @@ function paginationHref(key: "visitPage" | "loginPage", page: number): string {
               <thead>
                 <tr>
                   <th>Device</th>
-                  <th>Location</th>
-                  <th>Browser</th>
                   <th>Type</th>
+                  <th>Browser</th>
+                  <th>Location</th>
                   <th>Date</th>
                   <th></th>
                 </tr>
@@ -136,9 +136,9 @@ function paginationHref(key: "visitPage" | "loginPage", page: number): string {
                 {visits.map((v) => (
                   <tr>
                     <td>{v.operatingSystem}</td>
-                    <td>{formatLocation(v.country, v.region, v.city)}</td>
-                    <td>{v.browser}</td>
                     <td>{v.deviceType}</td>
+                    <td>{v.browser}</td>
+                    <td>{formatLocation(v.country, v.region, v.city)}</td>
                     <td><time data-local-date datetime={v.visitedAt}>{v.visitedAt}</time></td>
                     <td>
                       <button class="delete-btn" data-id={v.id} title="Eliminar">✕</button>
@@ -187,7 +187,6 @@ function paginationHref(key: "visitPage" | "loginPage", page: number): string {
                 <tr>
                   <th>User</th>
                   <th>Location</th>
-                  <th>IP</th>
                   <th>Date</th>
                 </tr>
               </thead>
@@ -196,7 +195,6 @@ function paginationHref(key: "visitPage" | "loginPage", page: number): string {
                   <tr>
                     <td>{l.username}</td>
                     <td>{formatLocation(l.country, l.region, l.city)}</td>
-                    <td>{l.ipAddress}</td>
                     <td><time data-local-date datetime={l.loggedAt}>{l.loggedAt}</time></td>
                   </tr>
                 ))}
