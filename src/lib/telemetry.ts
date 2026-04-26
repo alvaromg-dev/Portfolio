@@ -85,6 +85,29 @@ function botFilterSql(column: string = "user_agent"): string {
     .join(" AND ");
 }
 
+function countryCodeToName(country: string): string {
+  const value = country.trim();
+  if (!/^[A-Z]{2}$/i.test(value)) return value;
+
+  try {
+    return new Intl.DisplayNames(["en"], { type: "region" }).of(value.toUpperCase()) || value;
+  } catch {
+    return value;
+  }
+}
+
+function normalizeGeo(geo: GeoLocation): GeoLocation {
+  return {
+    country: countryCodeToName(geo.country).substring(0, 64),
+    region: geo.region.substring(0, 128),
+    city: geo.city.substring(0, 128),
+  };
+}
+
+function hasCompleteGeo(geo: GeoLocation): boolean {
+  return hasGeoValue(geo.country) && hasGeoValue(geo.region) && hasGeoValue(geo.city);
+}
+
 function cleanHeaderValue(value: string | null): string {
   if (!value || value === "XX") return "";
 
@@ -149,6 +172,48 @@ async function lookupGeoByIp(ipAddress: string): Promise<GeoLocation> {
   const timeout = setTimeout(() => controller.abort(), GEO_LOOKUP_TIMEOUT_MS);
 
   try {
+    const ipInfoToken = process.env.IPINFO_TOKEN;
+    const ipInfoResponse = await fetch(
+      `https://ipinfo.io/${encodeURIComponent(ipAddress)}/json${ipInfoToken ? `?token=${encodeURIComponent(ipInfoToken)}` : ""}`,
+      {
+        signal: controller.signal,
+        headers: { "User-Agent": "Mozilla/5.0" },
+      }
+    );
+    if (ipInfoResponse.ok) {
+      const ipInfoData = await ipInfoResponse.json() as {
+        country?: string;
+        region?: string;
+        city?: string;
+      };
+      const ipInfoGeo = normalizeGeo({
+        country: ipInfoData.country || "",
+        region: ipInfoData.region || "",
+        city: ipInfoData.city || "",
+      });
+      if (hasCompleteGeo(ipInfoGeo)) return ipInfoGeo;
+    }
+
+    const ipApiIsResponse = await fetch(
+      `https://api.ipapi.is/?q=${encodeURIComponent(ipAddress)}`,
+      { signal: controller.signal }
+    );
+    if (ipApiIsResponse.ok) {
+      const ipApiIsData = await ipApiIsResponse.json() as {
+        location?: {
+          country?: string;
+          state?: string;
+          city?: string;
+        };
+      };
+      const ipApiIsGeo = normalizeGeo({
+        country: ipApiIsData.location?.country || "",
+        region: ipApiIsData.location?.state || "",
+        city: ipApiIsData.location?.city || "",
+      });
+      if (hasCompleteGeo(ipApiIsGeo)) return ipApiIsGeo;
+    }
+
     const geoJsResponse = await fetch(
       `https://get.geojs.io/v1/ip/geo/${encodeURIComponent(ipAddress)}.json`,
       { signal: controller.signal }
@@ -159,11 +224,11 @@ async function lookupGeoByIp(ipAddress: string): Promise<GeoLocation> {
       city?: string;
     } : {};
 
-    const geo = {
+    const geo = normalizeGeo({
       country: (geoJsData.country || "").substring(0, 64),
       region: (geoJsData.region || "").substring(0, 128),
       city: (geoJsData.city || "").substring(0, 128),
-    };
+    });
 
     if (geo.country && geo.region && geo.city) return geo;
 
@@ -181,11 +246,11 @@ async function lookupGeoByIp(ipAddress: string): Promise<GeoLocation> {
     };
     if (ipApiData.status !== "success") return geo;
 
-    return {
+    return normalizeGeo({
       country: geo.country || (ipApiData.country || "").substring(0, 64),
       region: geo.region || (ipApiData.regionName || "").substring(0, 128),
       city: geo.city || (ipApiData.city || "").substring(0, 128),
-    };
+    });
   } catch {
     return { country: "", region: "", city: "" };
   } finally {
@@ -234,7 +299,7 @@ async function hydrateVisibleRowsWithGeo(
   const geoByIp = new Map<string, Promise<GeoLocation>>();
 
   await Promise.all(rows.map(async (row) => {
-    if (!needsRowGeo(row) || !isPublicIp(row.ipAddress)) return;
+    if (!isPublicIp(row.ipAddress)) return;
 
     if (!geoByIp.has(row.ipAddress)) {
       geoByIp.set(row.ipAddress, lookupGeoByIp(row.ipAddress));
@@ -243,7 +308,15 @@ async function hydrateVisibleRowsWithGeo(
     const geo = await geoByIp.get(row.ipAddress)!;
     if (!geo.country && !geo.region && !geo.city) return;
 
-    const merged = mergeGeo(row, geo);
+    const merged = needsRowGeo(row) ? mergeGeo(row, geo) : geo;
+    if (
+      row.country === merged.country &&
+      row.region === merged.region &&
+      row.city === merged.city
+    ) {
+      return;
+    }
+
     row.country = merged.country;
     row.region = merged.region;
     row.city = merged.city;
